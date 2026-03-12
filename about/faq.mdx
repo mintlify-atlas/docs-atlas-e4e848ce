@@ -1,0 +1,126 @@
+---
+title: Frequently Asked Questions
+description: Common questions about the RaceData Formula 1 dataset
+---
+
+# Frequently Asked Questions
+
+Find answers to common questions about using the RaceData Formula 1 dataset.
+
+<AccordionGroup>
+  <Accordion title="Can I use this data for my personal projects?">
+    Yes, you can use this data as you wish. We encourage creative use of the data for:
+
+    - Data analysis and research
+    - Visualization projects
+    - Academic work
+    - Personal applications
+
+    If you publish or share your work, attribution to TracingInsights is appreciated but not required.
+  </Accordion>
+
+  <Accordion title="I found an error in the data. How can I report it?">
+    If you find any errors or inconsistencies in our data, you can:
+
+    - Open an issue on the [GitHub repository](https://github.com/TracingInsights/RaceData/issues)
+    - Contact us through the [TracingInsights contact page](https://tracinginsights.com/contact/)
+
+    We review all reports and appreciate your help in maintaining data quality.
+  </Accordion>
+
+  <Accordion title="How often is the data updated?">
+    The dataset is automatically updated **within 3 hours** of the end of each Formula 1 race using GitHub Actions.
+
+    You can always get the latest data from:
+    - [GitHub Releases](https://github.com/TracingInsights/RaceData/releases/latest/download/data.zip)
+    - [HuggingFace Datasets](https://huggingface.co/datasets/tracinginsights/RaceData)
+  </Accordion>
+
+  <Accordion title="What time period does the data cover?">
+    The dataset contains comprehensive Formula 1 data from **1950 through the current season**.
+
+    It includes historical races, current season data, and is continuously updated as new races complete.
+  </Accordion>
+
+  <Accordion title="What format is the data available in?">
+    The data is primarily available as **CSV files** for each table (circuits, drivers, races, lap times, etc.).
+
+    Additionally, some supplementary data is provided in JSON format (e.g., virtual safety car estimates).
+
+    All files are bundled in a convenient `data.zip` archive for easy download.
+  </Accordion>
+
+  <Accordion title="How accurate is the data?">
+    The data is sourced from reputable Kaggle datasets that derive from the Ergast/Jolpica F1 data:
+
+    - [formula-1-race-data](https://www.kaggle.com/datasets/jtrotman/formula-1-race-data)
+    - [formula-1-race-events](https://www.kaggle.com/datasets/jtrotman/formula-1-race-events)
+
+    While we strive for accuracy, if you find any discrepancies, please [report them](https://github.com/TracingInsights/RaceData/issues).
+  </Accordion>
+
+  <Accordion title="Can I use this data for commercial purposes?">
+    Yes! The data is released under the CC0 1.0 Universal license (Public Domain).
+
+    You can use it for any purpose, including commercial projects, without restriction. See the [license page](/about/license) for full details.
+  </Accordion>
+
+  <Accordion title="Where can I find data for specific seasons?">
+    TracingInsights maintains separate repositories for individual seasons:
+
+    - [2025](https://github.com/TracingInsights/2025)
+    - [2024](https://github.com/TracingInsights/2024)
+    - [2023](https://github.com/TracingInsights/2023)
+    - [2022](https://github.com/TracingInsights/2022)
+    - [2021](https://github.com/TracingInsights/2021)
+    - [2020](https://github.com/TracingInsights/2020)
+    - [Historical Data](https://github.com/TracingInsights-Archive/stats)
+
+    Visit the [TracingInsights data page](https://tracinginsights.com/data) for a complete list.
+  </Accordion>
+
+  <Accordion title="What tables are included in the dataset?">
+    The dataset includes 18 CSV tables:
+
+    - circuits.csv
+    - constructor_results.csv
+    - constructor_standings.csv
+    - constructors.csv
+    - driver_standings.csv
+    - drivers.csv
+    - fatal_accidents_drivers.csv
+    - fatal_accidents_marshalls.csv
+    - lap_times.csv
+    - pit_stops.csv
+    - qualifying.csv
+    - races.csv
+    - red_flags.csv
+    - results.csv
+    - safety_cars.csv
+    - seasons.csv
+    - sprint_results.csv
+    - status.csv
+
+    See the [Schema Overview](/schema/overview) section for detailed descriptions of each table.
+  </Accordion>
+
+  <Accordion title="How do I join data across multiple tables?">
+    Tables are connected using foreign keys:
+
+    - `raceId` links to races.csv
+    - `driverId` links to drivers.csv
+    - `constructorId` links to constructors.csv
+    - `circuitId` links to circuits.csv
+    - `statusId` links to status.csv
+
+    See the [Schema Overview](/schema/overview) section for detailed relationship diagrams.
+  </Accordion>
+</AccordionGroup>
+
+## Still Have Questions?
+
+If your question isn't answered here:
+
+- Check the README files in each repository for specific details
+- Visit the [TracingInsights contact page](https://tracinginsights.com/contact/)
+- Open a [discussion on GitHub](https://github.com/TracingInsights/RaceData/discussions)

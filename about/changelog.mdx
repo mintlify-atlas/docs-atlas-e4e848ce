@@ -1,0 +1,194 @@
+---
+title: Changelog & Updates
+description: How RaceData stays current with automated updates
+---
+
+# Changelog & Updates
+
+The RaceData Formula 1 dataset is automatically updated to ensure you always have access to the latest race information.
+
+## Automated Update System
+
+### Update Frequency
+
+<Info>
+  The dataset is automatically updated **within 3 hours** of the completion of each Formula 1 race.
+</Info>
+
+Updates are triggered by a scheduled GitHub Actions workflow that:
+
+1. Downloads the latest data from Kaggle sources
+2. Checks for any changes compared to the existing data
+3. If changes are detected:
+   - Commits the updated data to the repository
+   - Creates a new GitHub release with downloadable `data.zip`
+   - Uploads to HuggingFace Datasets
+
+### How It Works
+
+The automated update process uses GitHub Actions to:
+
+```yaml
+# Scheduled to run every Sunday at specific times
+schedule:
+  - cron: '30 2 27 10 *'
+
+# Can also be triggered manually
+workflow_dispatch:
+```
+
+**Update Workflow Steps:**
+
+1. **Download** - Fetches latest datasets from Kaggle:
+   - [formula-1-race-data](https://www.kaggle.com/datasets/jtrotman/formula-1-race-data)
+   - [formula-1-race-events](https://www.kaggle.com/datasets/jtrotman/formula-1-race-events)
+
+2. **Detect Changes** - Compares new data with existing data
+
+3. **Commit & Push** - If changes exist:
+   ```
+   chore: update F1 datasets - [DATE]
+   
+   Automated update of Formula 1 datasets from Kaggle
+   - formula-1-race-data
+   - formula-1-race-events
+   ```
+
+4. **Create Release** - Generates a new GitHub release:
+   - Tag format: `data-YYYY-MM-DD`
+   - Includes `data.zip` with all tables
+   - Automated release notes
+
+5. **Sync HuggingFace** - Updates the HuggingFace Datasets mirror
+
+<Note>
+  If no changes are detected (data already current), no release is created.
+</Note>
+
+## Accessing Latest Data
+
+You can get the most recent data from multiple sources:
+
+### GitHub Releases
+
+Download the latest `data.zip` directly:
+
+```bash
+wget https://github.com/TracingInsights/RaceData/releases/latest/download/data.zip
+```
+
+Or browse all releases: [github.com/TracingInsights/RaceData/releases](https://github.com/TracingInsights/RaceData/releases)
+
+### HuggingFace Datasets
+
+Load directly into Python:
+
+```python
+from datasets import load_dataset
+
+dataset = load_dataset("tracinginsights/RaceData")
+```
+
+Or visit: [huggingface.co/datasets/tracinginsights/RaceData](https://huggingface.co/datasets/tracinginsights/RaceData)
+
+### Direct Git Clone
+
+```bash
+git clone https://github.com/TracingInsights/RaceData.git
+cd RaceData/data
+```
+
+## Checking for Updates
+
+### Via GitHub API
+
+Check the latest release programmatically:
+
+```bash
+curl https://api.github.com/repos/TracingInsights/RaceData/releases/latest
+```
+
+### Via Git
+
+If you've cloned the repository:
+
+```bash
+git fetch origin
+git log HEAD..origin/main --oneline
+```
+
+If output shows commits, updates are available:
+
+```bash
+git pull origin main
+```
+
+### Release Notifications
+
+Stay informed about updates:
+
+- **Watch the repository** on GitHub (select "Releases only")
+- **Subscribe to releases** via RSS: `https://github.com/TracingInsights/RaceData/releases.atom`
+- **Follow TracingInsights** on [social media](https://tracinginsights.com)
+
+## Update History
+
+Each release includes:
+
+- **Release date and time** (UTC)
+- **Dataset version tag** (e.g., `data-2026-03-12`)
+- **Source information** - Which Kaggle datasets were updated
+- **Download link** - Direct link to `data.zip`
+
+View complete history: [GitHub Releases](https://github.com/TracingInsights/RaceData/releases)
+
+## Data Version Control
+
+All changes to the dataset are tracked in Git, allowing you to:
+
+- **View change history** - See what data changed and when
+- **Access historical versions** - Check out previous releases
+- **Track data evolution** - Understand how the dataset has grown
+
+### Accessing Historical Data
+
+To get data from a specific date:
+
+```bash
+# List all release tags
+git tag -l
+
+# Checkout a specific version
+git checkout tags/data-2025-12-31
+```
+
+Or download a specific release from the [releases page](https://github.com/TracingInsights/RaceData/releases).
+
+## Manual Updates
+
+<Info>
+  The GitHub Actions workflow can also be triggered manually if needed.
+</Info>
+
+Repository maintainers can trigger an immediate update via:
+
+- GitHub UI: Actions → Update F1 Datasets → Run workflow
+- GitHub CLI: `gh workflow run update-datasets.yml`
+
+## Data Source Updates
+
+Our dataset is only as current as our upstream sources:
+
+- Updates depend on Kaggle dataset maintainers updating their datasets
+- Typically updated within hours of race completion
+- Historical data corrections propagate through automated updates
+
+## Questions About Updates?
+
+If you notice:
+
+- Missing recent race data (>3 hours after race completion)
+- Update failures or errors
+- Stale data that should have been updated
+
+Please [open an issue](https://github.com/TracingInsights/RaceData/issues) or [contact us](https://tracinginsights.com/contact/).

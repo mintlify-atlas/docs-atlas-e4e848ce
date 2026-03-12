@@ -1,0 +1,343 @@
+---
+title: 'upload_to_hf.py'
+description: 'Upload Formula 1 datasets to HuggingFace Hub'
+---
+
+## Overview
+
+The `upload_to_hf.py` script automates the process of uploading Formula 1 datasets to HuggingFace Hub, making the data accessible through HuggingFace's dataset platform.
+
+### What It Does
+
+1. Validates required environment variables and authentication tokens
+2. Checks if the target HuggingFace dataset repository exists
+3. Creates a new repository if it doesn't exist
+4. Uploads all files from the local `data/` directory to HuggingFace
+5. Provides detailed console output for monitoring the upload process
+
+## Functions
+
+### upload_to_huggingface
+
+Uploads datasets to HuggingFace Hub with automatic repository creation.
+
+<ParamField path="source_dir" type="Path" required>
+  Directory containing files to upload
+</ParamField>
+
+<ParamField path="repo_id" type="str" required>
+  HuggingFace repository ID in the format `username/dataset-name` (e.g., 'racedata/formula-1')
+</ParamField>
+
+<ParamField path="token" type="str | None" default="None">
+  HuggingFace API token. If `None`, the function will use the `HF_TOKEN` environment variable
+</ParamField>
+
+<ParamField path="returns" type="bool">
+  Returns `True` if successful, `False` otherwise
+</ParamField>
+
+#### Example Usage
+
+```python
+from pathlib import Path
+from upload_to_hf import upload_to_huggingface
+
+data_dir = Path("./data")
+repo_id = "your-username/formula-1-dataset"
+token = "hf_your_token_here"  # Or set HF_TOKEN env var
+
+success = upload_to_huggingface(data_dir, repo_id, token)
+if success:
+    print(f"Dataset available at: https://huggingface.co/datasets/{repo_id}")
+```
+
+#### Implementation Details
+
+```python
+def upload_to_huggingface(
+    source_dir: Path, repo_id: str, token: str | None = None
+) -> bool:
+    # Check if token is provided
+    if token is None:
+        token = os.environ.get("HF_TOKEN")
+    
+    if not token:
+        print("✗ No HuggingFace token provided. Skipping upload.")
+        return False
+    
+    api = HfApi()
+    
+    # Check if dataset exists, create if not
+    try:
+        api.dataset_info(repo_id, token=token)
+    except Exception:
+        api.create_repo(
+            repo_id=repo_id, repo_type="dataset", token=token, exist_ok=True
+        )
+    
+    # Upload all files from the data directory
+    upload_folder(
+        folder_path=str(source_dir),
+        repo_id=repo_id,
+        repo_type="dataset",
+        token=token,
+        commit_message=f"Update F1 datasets - {os.environ.get('COMMIT_DATE', 'manual update')}",
+    )
+```
+
+### main
+
+Main execution function that orchestrates the upload process.
+
+<ParamField path="returns" type="int">
+  Returns `0` on success, `1` on failure
+</ParamField>
+
+#### Workflow
+
+1. Validates that `HF_REPO_ID` environment variable is set
+2. Checks that the `data/` directory exists and contains files
+3. Calls `upload_to_huggingface()` to perform the upload
+4. Reports success/failure status
+
+## Usage
+
+### Running the Script
+
+```bash
+export HF_REPO_ID="your-username/formula-1-dataset"
+export HF_TOKEN="hf_your_token_here"
+python upload_to_hf.py
+```
+
+### Command Line Execution
+
+The script can be executed directly:
+
+```bash
+./upload_to_hf.py
+```
+
+## Required Environment Variables
+
+The script requires two environment variables to function:
+
+### HF_TOKEN
+
+<ParamField path="HF_TOKEN" type="string" required>
+  Your HuggingFace API token for authentication
+</ParamField>
+
+**How to get your token:**
+
+1. Create a HuggingFace account at [huggingface.co](https://huggingface.co)
+2. Go to Settings → Access Tokens
+3. Click "New token" and create a token with **write** permissions
+4. Copy the token (starts with `hf_`)
+
+**Setting the token:**
+
+```bash
+export HF_TOKEN="hf_your_token_here"
+```
+
+Or in GitHub Actions:
+
+```yaml
+env:
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+```
+
+### HF_REPO_ID
+
+<ParamField path="HF_REPO_ID" type="string" required>
+  The HuggingFace repository ID where datasets will be uploaded
+</ParamField>
+
+**Format:** `username/dataset-name` or `organization/dataset-name`
+
+**Example:**
+
+```bash
+export HF_REPO_ID="racedata/formula-1"
+```
+
+### COMMIT_DATE (Optional)
+
+<ParamField path="COMMIT_DATE" type="string">
+  Used in the commit message to track when the upload occurred. Defaults to 'manual update' if not set.
+</ParamField>
+
+```bash
+export COMMIT_DATE="$(date +'%Y-%m-%d')"
+```
+
+## Configuration
+
+### Repository Structure
+
+The script expects the following directory structure:
+
+```
+project/
+├── data/                    # Source directory
+│   ├── circuits.csv
+│   ├── constructors.csv
+│   ├── drivers.csv
+│   └── ...
+└── upload_to_hf.py
+```
+
+### HuggingFace Repository
+
+The script will:
+
+- **Create** a new dataset repository if it doesn't exist
+- **Update** an existing repository with new files
+- Preserve existing files unless overwritten
+
+## Dependencies
+
+From `pyproject.toml`:
+
+```toml
+dependencies = [
+    "kagglehub==0.3.13",
+    "huggingface-hub==0.35.3",
+]
+```
+
+### Required Packages
+
+- **huggingface-hub** (0.35.3) - HuggingFace Hub API client
+  - `HfApi` - API client for repository management
+  - `upload_folder` - Bulk file upload functionality
+- **pathlib** - File path operations (Python standard library)
+- **os** - Environment variable access (Python standard library)
+
+## GitHub Actions Integration
+
+This script is designed to work in GitHub Actions workflows:
+
+```yaml
+- name: Upload to HuggingFace
+  env:
+    HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+    COMMIT_DATE: ${{ github.event.head_commit.timestamp }}
+  run: python upload_to_hf.py
+```
+
+### Setting Up Secrets
+
+1. Go to your GitHub repository → Settings → Secrets and variables → Actions
+2. Add a new **repository secret** named `HF_TOKEN`
+3. Add a new **repository variable** named `HF_REPO_ID`
+
+## Error Handling
+
+The script includes comprehensive error handling:
+
+### Missing Token
+
+```
+✗ No HuggingFace token provided. Skipping upload.
+  Set HF_TOKEN environment variable or pass token parameter.
+```
+
+### Missing Repository ID
+
+```
+✗ HF_REPO_ID environment variable not set. Exiting.
+```
+
+### Empty Data Directory
+
+```
+✗ Data directory './data' not found or is empty. Exiting.
+```
+
+### Upload Failure
+
+```
+✗ Error uploading to HuggingFace: [error details]
+```
+
+## Console Output
+
+The script provides detailed progress information:
+
+```
+Formula 1 Dataset Upload Script
+============================================================
+Target HuggingFace repo: racedata/formula-1
+Data directory: /path/to/data
+
+============================================================
+Uploading to HuggingFace: racedata/formula-1
+============================================================
+✓ Dataset repository exists: racedata/formula-1
+  Uploading files from /path/to/data...
+✓ Successfully uploaded to HuggingFace
+  View at: https://huggingface.co/datasets/racedata/formula-1
+
+============================================================
+✓ Upload completed successfully!
+============================================================
+```
+
+## Example Workflow
+
+Here's a complete example combining both scripts:
+
+```yaml
+name: Update F1 Dataset
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly on Sunday
+  workflow_dispatch:
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.14'
+      
+      - name: Install dependencies
+        run: pip install kagglehub==0.3.13 huggingface-hub==0.35.3
+      
+      - name: Download datasets from Kaggle
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+        run: python download_datasets.py
+      
+      - name: Upload to HuggingFace
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+          COMMIT_DATE: ${{ github.event.head_commit.timestamp }}
+        run: python upload_to_hf.py
+```
+
+## Accessing Your Dataset
+
+After successful upload, your dataset will be available at:
+
+```
+https://huggingface.co/datasets/{your-username}/{dataset-name}
+```
+
+Users can then load your dataset using:
+
+```python
+from datasets import load_dataset
+
+dataset = load_dataset("your-username/dataset-name")
+```

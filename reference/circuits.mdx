@@ -1,0 +1,75 @@
+---
+title: Circuits
+description: Reference documentation for the circuits.csv table
+---
+
+The `circuits.csv` table contains information about each circuit where Formula 1 races have been held from 1950 to present.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `circuitId` | integer | Unique identifier for each circuit |
+| `circuitRef` | string | Short reference name for the circuit (URL-friendly) |
+| `name` | string | Official name of the circuit |
+| `location` | string | City where the circuit is located |
+| `country` | string | Country where the circuit is located |
+| `lat` | float | Latitude coordinate of the circuit |
+| `lng` | float | Longitude coordinate of the circuit |
+| `alt` | integer | Altitude of the circuit in meters |
+| `url` | string | Wikipedia URL for the circuit |
+
+## Sample Data
+
+| circuitId | circuitRef | name | location | country | lat | lng | alt |
+|-----------|------------|------|----------|---------|-----|-----|-----|
+| 1 | albert_park | Albert Park Grand Prix Circuit | Melbourne | Australia | -37.8497 | 144.968 | 10 |
+| 2 | sepang | Sepang International Circuit | Kuala Lumpur | Malaysia | 2.76083 | 101.738 | 18 |
+| 3 | bahrain | Bahrain International Circuit | Sakhir | Bahrain | 26.0325 | 50.5106 | 7 |
+| 4 | catalunya | Circuit de Barcelona-Catalunya | Montmeló | Spain | 41.57 | 2.26111 | 109 |
+
+## Relationships
+
+<Note>
+**Referenced by:**
+- `races.circuitId` → `circuits.circuitId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 78 circuits
+- **Date Range:** 1950 - Present
+- **Geographic Coverage:** Worldwide
+
+## Example Queries
+
+### Find circuits by country
+
+```python
+import pandas as pd
+
+circuits = pd.read_csv('circuits.csv')
+italian_circuits = circuits[circuits['country'] == 'Italy']
+print(italian_circuits[['name', 'location']])
+```
+
+### Get highest altitude circuits
+
+```python
+high_altitude = circuits.nlargest(5, 'alt')
+print(high_altitude[['name', 'location', 'alt']])
+```
+
+### Calculate circuit locations map data
+
+```python
+map_data = circuits[['name', 'lat', 'lng', 'country']]
+# Use with mapping libraries like folium or plotly
+```
+
+## Notes
+
+- Coordinates are provided in decimal degrees format
+- Altitude values may be `\N` for older circuits where data is unavailable
+- Some circuits have hosted races under different names over the years
+- The `circuitRef` field is useful for creating URL-friendly identifiers

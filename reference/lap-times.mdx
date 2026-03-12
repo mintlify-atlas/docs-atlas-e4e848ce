@@ -1,0 +1,169 @@
+---
+title: Lap Times
+description: Reference documentation for the lap_times.csv table
+---
+
+The `lap_times.csv` table contains individual lap times for every driver in each race, providing detailed telemetry for race analysis.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `raceId` | integer | Foreign key to races.csv |
+| `driverId` | integer | Foreign key to drivers.csv |
+| `lap` | integer | Lap number |
+| `position` | integer | Driver's position at the end of this lap |
+| `time` | string | Lap time in MM:SS.mmm format |
+| `milliseconds` | integer | Lap time in milliseconds for precise calculations |
+
+<Note>
+This table uses a composite key of `(raceId, driverId, lap)` rather than a single unique identifier.
+</Note>
+
+## Sample Data
+
+| raceId | driverId | lap | position | time | milliseconds |
+|--------|----------|-----|----------|------|-------------|
+| 841 | 20 | 1 | 1 | 1:38.109 | 98109 |
+| 841 | 20 | 2 | 1 | 1:33.006 | 93006 |
+| 841 | 20 | 3 | 1 | 1:32.713 | 92713 |
+| 841 | 20 | 4 | 1 | 1:32.803 | 92803 |
+
+## Relationships
+
+<Note>
+**References:**
+- `lap_times.raceId` → `races.raceId`
+- `lap_times.driverId` → `drivers.driverId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 616,741 lap times
+- **Date Range:** Lap-by-lap data available from 1996 onwards
+- **Laps per Race:** Varies by circuit (typically 50-70 laps)
+
+## Example Queries
+
+### Get all laps for a specific race
+
+```python
+import pandas as pd
+
+lap_times = pd.read_csv('lap_times.csv')
+race_laps = lap_times[lap_times['raceId'] == 841]
+print(race_laps.head(20))
+```
+
+### Find fastest lap in a race
+
+```python
+race_laps = lap_times[lap_times['raceId'] == 1000]
+fastest = race_laps.nsmallest(1, 'milliseconds')
+print(fastest[['driverId', 'lap', 'time', 'milliseconds']])
+```
+
+### Analyze driver pace throughout a race
+
+```python
+import matplotlib.pyplot as plt
+
+driver_laps = lap_times[
+    (lap_times['raceId'] == 1000) & 
+    (lap_times['driverId'] == 1)
+]
+plt.plot(driver_laps['lap'], driver_laps['milliseconds'] / 1000)
+plt.xlabel('Lap Number')
+plt.ylabel('Lap Time (seconds)')
+plt.title('Driver Pace Analysis')
+plt.show()
+```
+
+### Calculate average lap time by driver
+
+```python
+race_laps = lap_times[lap_times['raceId'] == 1000]
+average_times = race_laps.groupby('driverId')['milliseconds'].mean()
+print(average_times.sort_values())
+```
+
+### Identify pit stop laps
+
+```python
+# Pit stop laps are typically 20-30+ seconds slower
+driver_laps = lap_times[
+    (lap_times['raceId'] == 1000) & 
+    (lap_times['driverId'] == 1)
+].copy()
+
+driver_laps['diff'] = driver_laps['milliseconds'].diff()
+pit_laps = driver_laps[driver_laps['milliseconds'] > driver_laps['milliseconds'].mean() * 1.3]
+print(pit_laps[['lap', 'time']])
+```
+
+### Compare lap times between drivers
+
+```python
+driver1_laps = lap_times[
+    (lap_times['raceId'] == 1000) & 
+    (lap_times['driverId'] == 1)
+].set_index('lap')
+
+driver2_laps = lap_times[
+    (lap_times['raceId'] == 1000) & 
+    (lap_times['driverId'] == 20)
+].set_index('lap')
+
+comparison = pd.DataFrame({
+    'driver1': driver1_laps['milliseconds'],
+    'driver2': driver2_laps['milliseconds']
+})
+comparison['gap'] = comparison['driver2'] - comparison['driver1']
+print(comparison)
+```
+
+### Detect safety car periods
+
+```python
+# Safety car laps show all drivers with similar slow times
+race_laps = lap_times[lap_times['raceId'] == 1000]
+avg_by_lap = race_laps.groupby('lap')['milliseconds'].mean()
+std_by_lap = race_laps.groupby('lap')['milliseconds'].std()
+
+# Low variance + slow times = potential safety car
+safety_car_laps = avg_by_lap[
+    (std_by_lap < std_by_lap.mean() * 0.5) & 
+    (avg_by_lap > avg_by_lap.mean() * 1.1)
+]
+print(f"Potential safety car laps: {list(safety_car_laps.index)}")
+```
+
+### Calculate race pace degradation
+
+```python
+# Compare early stint vs late stint pace
+driver_laps = lap_times[
+    (lap_times['raceId'] == 1000) & 
+    (lap_times['driverId'] == 1)
+]
+
+early_laps = driver_laps[driver_laps['lap'].between(2, 10)]
+late_laps = driver_laps[driver_laps['lap'].between(40, 50)]
+
+early_avg = early_laps['milliseconds'].mean()
+late_avg = late_laps['milliseconds'].mean()
+degradation = ((late_avg - early_avg) / early_avg) * 100
+
+print(f"Pace degradation: {degradation:.2f}%")
+```
+
+## Notes
+
+- Lap time data is most complete from 1996 onwards
+- First lap times are typically slower due to standing start
+- Pit stop laps show significantly slower times (include pit lane time)
+- Safety car and VSC periods affect lap times considerably
+- Track evolution means later laps are often faster (unless tire degradation)
+- `milliseconds` field is preferred for calculations to avoid parsing time strings
+- Outlier lap times may indicate incidents, pit stops, or data errors
+- Position changes between laps help track overtakes

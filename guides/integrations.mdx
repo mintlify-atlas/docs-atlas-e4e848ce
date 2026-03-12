@@ -1,0 +1,753 @@
+---
+title: 'Integrations'
+description: 'Connect F1 data with Jupyter, data warehouses, BI tools, and ML pipelines'
+icon: 'plug'
+---
+
+# Integration Guide
+
+Integrate the RaceData Formula 1 dataset with popular tools and platforms. This guide covers notebooks, data warehouses, BI tools, and machine learning pipelines.
+
+## Jupyter Notebooks
+
+### Setup
+
+Create a data analysis environment with Jupyter:
+
+```bash
+# Install Jupyter and extensions
+pip install jupyter jupyterlab pandas matplotlib plotly seaborn
+
+# Launch Jupyter Lab
+jupyter lab
+```
+
+### Example Notebook Structure
+
+Create `f1_analysis.ipynb` with this structure:
+
+```python
+# Cell 1: Setup and Imports
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import numpy as np
+from pathlib import Path
+
+# Set display options
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', 100)
+
+# Set plotting style
+sns.set_style('darkgrid')
+plt.rcParams['figure.figsize'] = (12, 6)
+
+print("✓ Environment ready")
+```
+
+```python
+# Cell 2: Load Data
+data_dir = Path('data')
+
+# Load all tables
+drivers = pd.read_csv(data_dir / 'drivers.csv')
+constructors = pd.read_csv(data_dir / 'constructors.csv')
+races = pd.read_csv(data_dir / 'races.csv')
+results = pd.read_csv(data_dir / 'results.csv')
+lap_times = pd.read_csv(data_dir / 'lap_times.csv')
+pit_stops = pd.read_csv(data_dir / 'pit_stops.csv')
+qualifying = pd.read_csv(data_dir / 'qualifying.csv')
+
+print(f"Drivers: {len(drivers):,}")
+print(f"Races: {len(races):,}")
+print(f"Results: {len(results):,}")
+print(f"Lap times: {len(lap_times):,}")
+```
+
+```python
+# Cell 3: Data Exploration
+# Quick stats
+print("Date Range:", races['date'].min(), "to", races['date'].max())
+print("Total Seasons:", races['year'].nunique())
+print("\nTop 5 Winners:")
+
+wins = (
+    results[results['position'] == 1]
+    .merge(drivers, on='driverId')
+    .groupby(['forename', 'surname'])
+    .size()
+    .sort_values(ascending=False)
+    .head()
+)
+print(wins)
+```
+
+```python
+# Cell 4: Custom Analysis Function
+def analyze_driver(driver_ref):
+    """
+    Comprehensive driver analysis
+    """
+    driver = drivers[drivers['driverRef'] == driver_ref].iloc[0]
+    driver_results = results[results['driverId'] == driver['driverId']]
+    
+    # Calculate statistics
+    stats = {
+        'Name': f"{driver['forename']} {driver['surname']}",
+        'Nationality': driver['nationality'],
+        'Total Races': len(driver_results),
+        'Wins': len(driver_results[driver_results['position'] == 1]),
+        'Podiums': len(driver_results[driver_results['position'] <= 3]),
+        'Total Points': driver_results['points'].sum(),
+        'Avg Finish': driver_results['positionOrder'].mean(),
+        'DNF Rate': len(driver_results[driver_results['positionText'] == 'R']) / len(driver_results) * 100
+    }
+    
+    # Display results
+    for key, value in stats.items():
+        if isinstance(value, float):
+            print(f"{key}: {value:.2f}")
+        else:
+            print(f"{key}: {value}")
+    
+    # Plot performance over time
+    driver_data = driver_results.merge(races[['raceId', 'year']], on='raceId')
+    yearly_points = driver_data.groupby('year')['points'].sum()
+    
+    plt.figure(figsize=(12, 5))
+    yearly_points.plot(kind='bar', color='steelblue')
+    plt.title(f"{stats['Name']} - Points per Season")
+    plt.xlabel('Year')
+    plt.ylabel('Points')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
+    
+    return stats
+
+# Example usage
+analyze_driver('hamilton')
+```
+
+### Interactive Widgets
+
+Add interactive controls to your notebook:
+
+```python
+from ipywidgets import interact, widgets
+import plotly.graph_objects as go
+
+@interact(
+    driver=widgets.Dropdown(
+        options=[(f"{row['forename']} {row['surname']}", row['driverRef']) 
+                 for _, row in drivers.iterrows()],
+        description='Driver:'
+    ),
+    year_range=widgets.IntRangeSlider(
+        value=[2014, 2024],
+        min=1950,
+        max=2024,
+        step=1,
+        description='Years:'
+    )
+)
+def plot_driver_performance(driver, year_range):
+    # Get driver ID
+    driver_id = drivers[drivers['driverRef'] == driver].iloc[0]['driverId']
+    
+    # Filter data
+    driver_results = results[
+        (results['driverId'] == driver_id) &
+        (results['raceId'].isin(races[
+            (races['year'] >= year_range[0]) &
+            (races['year'] <= year_range[1])
+        ]['raceId']))
+    ]
+    
+    # Merge with race info
+    plot_data = driver_results.merge(
+        races[['raceId', 'year', 'round', 'name']], 
+        on='raceId'
+    )
+    
+    # Create interactive plot
+    fig = go.Figure()
+    
+    fig.add_trace(go.Scatter(
+        x=plot_data.index,
+        y=plot_data['points'],
+        mode='lines+markers',
+        name='Points',
+        hovertemplate='<b>%{text}</b><br>Points: %{y}<extra></extra>',
+        text=plot_data['name']
+    ))
+    
+    fig.update_layout(
+        title=f'{driver.title()} Performance ({year_range[0]}-{year_range[1]})',
+        xaxis_title='Race',
+        yaxis_title='Points',
+        height=500
+    )
+    
+    fig.show()
+```
+
+<Tip>
+Use Jupyter's `%matplotlib inline` magic command for inline plots, or `%matplotlib widget` for interactive matplotlib plots.
+</Tip>
+
+## Data Warehouses
+
+### Google BigQuery
+
+Load F1 data into BigQuery for cloud-scale analysis:
+
+```python
+from google.cloud import bigquery
+import pandas as pd
+import glob
+
+# Initialize client
+client = bigquery.Client(project='your-project-id')
+dataset_id = 'f1_data'
+
+# Create dataset
+dataset = bigquery.Dataset(f"{client.project}.{dataset_id}")
+dataset.location = 'US'
+client.create_dataset(dataset, exists_ok=True)
+
+print(f"Created dataset {client.project}.{dataset_id}")
+
+# Load all CSV files
+for csv_file in glob.glob('data/*.csv'):
+    table_name = csv_file.split('/')[-1].replace('.csv', '')
+    table_id = f"{client.project}.{dataset_id}.{table_name}"
+    
+    # Configure load job
+    job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.CSV,
+        skip_leading_rows=1,
+        autodetect=True,
+        write_disposition='WRITE_TRUNCATE'
+    )
+    
+    # Load data
+    with open(csv_file, 'rb') as f:
+        load_job = client.load_table_from_file(
+            f, table_id, job_config=job_config
+        )
+    
+    load_job.result()  # Wait for completion
+    print(f"✓ Loaded {table_name}")
+
+print("\nAll tables loaded to BigQuery!")
+```
+
+Query BigQuery from Python:
+
+```python
+from google.cloud import bigquery
+import pandas as pd
+
+client = bigquery.Client()
+
+query = """
+SELECT 
+    d.forename || ' ' || d.surname as driver_name,
+    COUNT(*) as wins,
+    SUM(r.points) as total_points
+FROM `your-project.f1_data.results` r
+JOIN `your-project.f1_data.drivers` d
+    ON r.driverId = d.driverId
+WHERE r.position = 1
+GROUP BY d.driverId, driver_name
+ORDER BY wins DESC
+LIMIT 10
+"""
+
+result_df = client.query(query).to_dataframe()
+print(result_df)
+```
+
+### Snowflake
+
+Load data into Snowflake:
+
+```python
+import snowflake.connector
+import pandas as pd
+import glob
+
+# Connect to Snowflake
+conn = snowflake.connector.connect(
+    user='your_username',
+    password='your_password',
+    account='your_account',
+    warehouse='COMPUTE_WH',
+    database='F1_DATA',
+    schema='PUBLIC'
+)
+
+cursor = conn.cursor()
+
+# Create database and schema
+cursor.execute("CREATE DATABASE IF NOT EXISTS F1_DATA")
+cursor.execute("USE DATABASE F1_DATA")
+cursor.execute("CREATE SCHEMA IF NOT EXISTS PUBLIC")
+
+print("Database setup complete")
+
+# Load each CSV file
+for csv_file in glob.glob('data/*.csv'):
+    table_name = csv_file.split('/')[-1].replace('.csv', '').upper()
+    
+    # Read CSV to get schema
+    df = pd.read_csv(csv_file, nrows=0)
+    
+    # Create table (simplified - adjust types as needed)
+    columns = ', '.join([f"{col} VARCHAR" for col in df.columns])
+    cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+    cursor.execute(f"CREATE TABLE {table_name} ({columns})")
+    
+    # Load data
+    df_full = pd.read_csv(csv_file)
+    
+    # Write to Snowflake
+    from snowflake.connector.pandas_tools import write_pandas
+    success, nchunks, nrows, _ = write_pandas(
+        conn, df_full, table_name, auto_create_table=False
+    )
+    
+    print(f"✓ Loaded {table_name}: {nrows} rows")
+
+cursor.close()
+conn.close()
+print("\nAll data loaded to Snowflake!")
+```
+
+### AWS Athena
+
+Query F1 data in S3 with Athena:
+
+```python
+import boto3
+import pandas as pd
+import time
+
+# Upload CSVs to S3 first
+import glob
+
+s3_client = boto3.client('s3')
+bucket_name = 'your-bucket-name'
+prefix = 'f1-data/'
+
+for csv_file in glob.glob('data/*.csv'):
+    file_name = csv_file.split('/')[-1]
+    s3_client.upload_file(
+        csv_file,
+        bucket_name,
+        f"{prefix}{file_name}"
+    )
+    print(f"✓ Uploaded {file_name}")
+
+# Create Athena table
+athena_client = boto3.client('athena')
+
+create_table_query = """
+CREATE EXTERNAL TABLE IF NOT EXISTS f1_results (
+    resultId INT,
+    raceId INT,
+    driverId INT,
+    constructorId INT,
+    number INT,
+    grid INT,
+    position INT,
+    points FLOAT,
+    laps INT
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION 's3://your-bucket-name/f1-data/'
+TBLPROPERTIES ('skip.header.line.count'='1')
+"""
+
+response = athena_client.start_query_execution(
+    QueryString=create_table_query,
+    ResultConfiguration={'OutputLocation': 's3://your-bucket-name/athena-results/'}
+)
+
+print("Table created in Athena")
+```
+
+## BI Tools
+
+### Tableau
+
+**Option 1: Direct CSV Connection**
+
+1. Open Tableau Desktop
+2. Connect to Data → Text File
+3. Navigate to your `data/` folder
+4. Select multiple CSVs and create relationships
+5. Define joins:
+   - `results.raceId` → `races.raceId`
+   - `results.driverId` → `drivers.driverId`
+   - `results.constructorId` → `constructors.constructorId`
+
+**Option 2: PostgreSQL Connection**
+
+First, load data into PostgreSQL:
+
+```python
+import pandas as pd
+from sqlalchemy import create_engine
+import glob
+
+engine = create_engine('postgresql://user:password@localhost:5432/f1_data')
+
+for csv_file in glob.glob('data/*.csv'):
+    table_name = csv_file.split('/')[-1].replace('.csv', '')
+    df = pd.read_csv(csv_file)
+    df.to_sql(table_name, engine, if_exists='replace', index=False)
+    print(f"✓ Loaded {table_name}")
+
+print("\nConnect Tableau to PostgreSQL at localhost:5432/f1_data")
+```
+
+Then in Tableau:
+1. Connect to Data → PostgreSQL
+2. Enter connection details
+3. Select all F1 tables
+4. Create relationships in the data model
+
+### Power BI
+
+**Load CSV Files:**
+
+1. Open Power BI Desktop
+2. Get Data → Text/CSV
+3. Load all CSV files from `data/` folder
+4. Transform Data → Merge tables:
+
+```powerquery
+// Create relationships in Power Query
+= Table.NestedJoin(
+    results,
+    {"raceId"},
+    races,
+    {"raceId"},
+    "race_info",
+    JoinKind.LeftOuter
+)
+```
+
+**Python Integration in Power BI:**
+
+```python
+# Run in Power BI Python script editor
+import pandas as pd
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Create enriched dataset
+enriched = (
+    results
+    .merge(races[['raceId', 'year', 'name']], on='raceId')
+    .merge(drivers[['driverId', 'forename', 'surname']], on='driverId')
+)
+
+enriched['driver_name'] = enriched['forename'] + ' ' + enriched['surname']
+
+# This DataFrame becomes available in Power BI
+output = enriched
+```
+
+### Metabase
+
+Open-source BI tool with easy setup:
+
+```bash
+# Run Metabase with Docker
+docker run -d -p 3000:3000 \
+  -v ~/metabase-data:/metabase-data \
+  --name metabase \
+  metabase/metabase
+```
+
+Then:
+1. Navigate to `http://localhost:3000`
+2. Complete setup wizard
+3. Add PostgreSQL/MySQL database with F1 data
+4. Create questions and dashboards
+
+## Machine Learning Pipelines
+
+### Scikit-learn: Predicting Race Outcomes
+
+```python
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+qualifying = pd.read_csv('data/qualifying.csv')
+
+# Merge and create features
+data = (
+    results
+    .merge(races[['raceId', 'year', 'circuitId']], on='raceId')
+    .merge(qualifying[['raceId', 'driverId', 'position']], 
+           on=['raceId', 'driverId'], 
+           how='left',
+           suffixes=('', '_quali'))
+)
+
+# Feature engineering
+data['quali_position'] = data['position_quali'].fillna(20)
+data['won'] = (data['position'] == 1).astype(int)
+
+# Select features
+features = ['grid', 'quali_position', 'driverId', 'constructorId', 'circuitId', 'year']
+X = data[features].fillna(0)
+y = data['won']
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
+
+# Train model
+model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+model.fit(X_train, y_train)
+
+# Evaluate
+y_pred = model.predict(X_test)
+print(f"Accuracy: {accuracy_score(y_test, y_pred):.3f}")
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# Feature importance
+importances = pd.DataFrame({
+    'feature': features,
+    'importance': model.feature_importances_
+}).sort_values('importance', ascending=False)
+
+print("\nFeature Importance:")
+print(importances)
+```
+
+### PyTorch: Lap Time Prediction
+
+```python
+import pandas as pd
+import numpy as np
+import torch
+import torch.nn as nn
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Load lap times
+lap_times = pd.read_csv('data/lap_times.csv')
+races = pd.read_csv('data/races.csv')
+
+# Merge and create features
+data = lap_times.merge(races[['raceId', 'circuitId', 'year']], on='raceId')
+
+# Features: circuitId, driverId, lap number, position
+features = ['circuitId', 'driverId', 'lap', 'position']
+X = data[features].values
+y = data['milliseconds'].values.reshape(-1, 1)
+
+# Normalize
+scaler_X = StandardScaler()
+scaler_y = StandardScaler()
+X_scaled = scaler_X.fit_transform(X)
+y_scaled = scaler_y.fit_transform(y)
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y_scaled, test_size=0.2, random_state=42
+)
+
+# Convert to tensors
+X_train_t = torch.FloatTensor(X_train)
+y_train_t = torch.FloatTensor(y_train)
+X_test_t = torch.FloatTensor(X_test)
+y_test_t = torch.FloatTensor(y_test)
+
+# Define model
+class LapTimePredictor(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(input_size, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Linear(32, 1)
+        )
+    
+    def forward(self, x):
+        return self.layers(x)
+
+# Initialize and train
+model = LapTimePredictor(X_train.shape[1])
+criterion = nn.MSELoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+# Training loop
+epochs = 100
+for epoch in range(epochs):
+    model.train()
+    optimizer.zero_grad()
+    y_pred = model(X_train_t)
+    loss = criterion(y_pred, y_train_t)
+    loss.backward()
+    optimizer.step()
+    
+    if (epoch + 1) % 10 == 0:
+        model.eval()
+        with torch.no_grad():
+            test_pred = model(X_test_t)
+            test_loss = criterion(test_pred, y_test_t)
+        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {loss.item():.4f}, Test Loss: {test_loss.item():.4f}")
+
+print("\nTraining complete!")
+```
+
+### MLflow: Experiment Tracking
+
+```python
+import mlflow
+import mlflow.sklearn
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+import pandas as pd
+import numpy as np
+
+# Start MLflow experiment
+mlflow.set_experiment("f1-lap-time-prediction")
+
+with mlflow.start_run(run_name="random_forest_v1"):
+    # Load and prepare data
+    lap_times = pd.read_csv('data/lap_times.csv')
+    # ... feature engineering ...
+    
+    # Log parameters
+    n_estimators = 100
+    max_depth = 10
+    mlflow.log_param("n_estimators", n_estimators)
+    mlflow.log_param("max_depth", max_depth)
+    
+    # Train model
+    model = RandomForestRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=42
+    )
+    model.fit(X_train, y_train)
+    
+    # Evaluate
+    y_pred = model.predict(X_test)
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    # Log metrics
+    mlflow.log_metric("mse", mse)
+    mlflow.log_metric("r2", r2)
+    
+    # Log model
+    mlflow.sklearn.log_model(model, "model")
+    
+    print(f"MSE: {mse:.2f}, R²: {r2:.3f}")
+```
+
+View experiments:
+```bash
+mlflow ui
+```
+
+## API Integration
+
+### Create REST API with FastAPI
+
+```python
+from fastapi import FastAPI, HTTPException
+import pandas as pd
+from typing import Optional
+
+app = FastAPI(title="F1 Data API")
+
+# Load data at startup
+@app.on_event("startup")
+def load_data():
+    global drivers, races, results
+    drivers = pd.read_csv('data/drivers.csv')
+    races = pd.read_csv('data/races.csv')
+    results = pd.read_csv('data/results.csv')
+
+@app.get("/drivers/{driver_ref}")
+def get_driver(driver_ref: str):
+    driver = drivers[drivers['driverRef'] == driver_ref]
+    if len(driver) == 0:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    return driver.iloc[0].to_dict()
+
+@app.get("/drivers/{driver_ref}/wins")
+def get_driver_wins(driver_ref: str):
+    driver = drivers[drivers['driverRef'] == driver_ref]
+    if len(driver) == 0:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    driver_id = driver.iloc[0]['driverId']
+    wins = results[
+        (results['driverId'] == driver_id) & 
+        (results['position'] == 1)
+    ]
+    
+    return {
+        "driver": driver_ref,
+        "total_wins": len(wins),
+        "wins": wins.merge(races[['raceId', 'year', 'name']], on='raceId').to_dict('records')
+    }
+
+@app.get("/seasons/{year}")
+def get_season(year: int):
+    season_races = races[races['year'] == year]
+    return {
+        "year": year,
+        "total_races": len(season_races),
+        "races": season_races.to_dict('records')
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+Run the API:
+```bash
+pip install fastapi uvicorn
+python api.py
+```
+
+Access at `http://localhost:8000/docs`
+
+## Next Steps
+
+- Explore [data analysis patterns](/guides/data-analysis) for preparing data
+- Learn [querying techniques](/guides/querying) for efficient data extraction
+- Create [visualizations](/guides/visualization) in your integrated environment

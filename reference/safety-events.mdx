@@ -1,0 +1,220 @@
+---
+title: Safety Events
+description: Reference documentation for safety_cars.csv, red_flags.csv, and virtual_safety_car_estimates.json
+---
+
+These tables track safety-related race interruptions and neutralization periods in Formula 1 races.
+
+## Safety Cars
+
+The `safety_cars.csv` table contains information about physical safety car deployments during races.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Race` | string | Name of the Grand Prix |
+| `Cause` | string | Reason for safety car deployment |
+| `Deployed` | integer | Lap number when safety car was deployed |
+| `Retreated` | float | Lap number when safety car returned to pit lane |
+| `FullLaps` | integer | Number of full laps under safety car |
+
+<Warning>
+`Retreated` may be `\N` if the race did not resume after safety car, or data is unavailable.
+</Warning>
+
+### Sample Data
+
+| Race | Cause | Deployed | Retreated | FullLaps |
+|------|-------|----------|-----------|----------|
+| 1973 Canadian Grand Prix | Accident | 33 | 39.0 | 5 |
+| 1993 Brazilian Grand Prix | Accident/Rain | 29 | 38.0 | 8 |
+| 1994 San Marino Grand Prix | Accident | 1 | 6.0 | 4 |
+| 1995 Belgian Grand Prix | Rain | 28 | 33.0 | 4 |
+
+### Dataset Statistics
+
+- **Total Records:** 364 safety car periods
+- **First Usage:** 1973 Canadian Grand Prix
+- **Common Causes:** Accidents, debris, weather conditions
+
+---
+
+## Red Flags
+
+The `red_flags.csv` table contains information about race stoppages due to red flag conditions.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Race` | string | Name of the Grand Prix |
+| `Lap` | integer | Lap number when red flag was shown |
+| `Resumed` | string | Whether race resumed (Y/N/R/S) |
+| `Incident` | string | Description of the incident causing red flag |
+| `Excluded` | string | List of drivers excluded from the race |
+
+### Resume Codes
+
+- **Y** - Yes, race resumed
+- **N** - No, race ended under red flag
+- **R** - Race restarted
+- **S** - Special circumstances
+
+### Sample Data
+
+| Race | Lap | Resumed | Incident |
+|------|-----|---------|----------|
+| 1950 Indianapolis 500 | 138 | N | Rain. |
+| 1971 Canadian Grand Prix | 64 | N | Mist. |
+| 1973 British Grand Prix | 2 | Y | Crash involving Jody Scheckter, Jean-Pierre Beltoise... |
+| 1974 Brazilian Grand Prix | 32 | N | Rain. |
+
+### Dataset Statistics
+
+- **Total Records:** 98 red flag incidents
+- **First Usage:** 1950
+- **Common Causes:** Weather, major accidents, track safety issues
+
+---
+
+## Virtual Safety Car
+
+The `virtual_safety_car_estimates.json` file contains estimated VSC (Virtual Safety Car) periods.
+
+### Structure
+
+```json
+{
+    "Race Name": [lap_numbers],
+    "2015 Belgian Grand Prix": [20, 21],
+    "2015 British Grand Prix": [32, 33, 34],
+    "2015 Hungarian Grand Prix": [41, 42]
+}
+```
+
+- **Keys:** Race name (Grand Prix title)
+- **Values:** Array of lap numbers when VSC was active
+
+### Dataset Statistics
+
+- **Format:** JSON
+- **First VSC:** Introduced in 2015
+- **Purpose:** Track safety without physical safety car
+
+---
+
+## Example Queries
+
+### Count safety car deployments per race
+
+```python
+import pandas as pd
+
+safety_cars = pd.read_csv('safety_cars.csv')
+deployments = safety_cars['Race'].value_counts()
+print(deployments.head(10))
+```
+
+### Find longest safety car periods
+
+```python
+longest_sc = safety_cars.nlargest(10, 'FullLaps')
+print(longest_sc[['Race', 'Cause', 'FullLaps']])
+```
+
+### Analyze red flag outcomes
+
+```python
+red_flags = pd.read_csv('red_flags.csv')
+resumed_count = red_flags['Resumed'].value_counts()
+print("Red flag outcomes:")
+print(resumed_count)
+```
+
+### Find races with multiple safety cars
+
+```python
+multiple_sc = safety_cars.groupby('Race').size()
+races_with_multiple = multiple_sc[multiple_sc > 1].sort_values(ascending=False)
+print(races_with_multiple.head(10))
+```
+
+### Parse VSC data
+
+```python
+import json
+
+with open('virtual_safety_car_estimates.json', 'r') as f:
+    vsc_data = json.load(f)
+
+# Count VSC laps per race
+for race, laps in vsc_data.items():
+    print(f"{race}: {len(laps)} VSC laps")
+```
+
+### Analyze safety interventions by year
+
+```python
+# Extract year from race name
+safety_cars['year'] = safety_cars['Race'].str.extract(r'(\d{4})')
+sc_by_year = safety_cars.groupby('year').size()
+print(sc_by_year)
+```
+
+### Compare safety car vs red flag frequency
+
+```python
+print(f"Safety car deployments: {len(safety_cars)}")
+print(f"Red flag incidents: {len(red_flags)}")
+print(f"Ratio: {len(safety_cars) / len(red_flags):.2f}:1")
+```
+
+### Find common safety car causes
+
+```python
+cause_counts = safety_cars['Cause'].value_counts()
+print("Top causes for safety car:")
+print(cause_counts.head(10))
+```
+
+### Identify races with both SC and red flag
+
+```python
+sc_races = set(safety_cars['Race'])
+rf_races = set(red_flags['Race'])
+both = sc_races & rf_races
+print(f"Races with both safety car and red flag: {len(both)}")
+for race in sorted(both):
+    print(f"  - {race}")
+```
+
+## Safety Intervention Types
+
+### Safety Car (SC)
+- Physical car leads the field
+- Drivers must slow down and bunch up
+- No overtaking allowed
+- Pit lane usually open
+
+### Virtual Safety Car (VSC)
+- Introduced in 2015
+- Drivers must maintain delta time (slow down by percentage)
+- No physical safety car on track
+- More flexible than full SC
+
+### Red Flag
+- Race completely stopped
+- Cars return to pit lane or grid
+- Used for serious incidents or conditions
+- Race may or may not resume
+
+## Notes
+
+- Safety car data is more complete for modern races
+- VSC estimates are based on lap time analysis (not official FIA data)
+- Red flags can occur during any session (practice, qualifying, race)
+- Multiple safety car periods can occur in a single race
+- `\N` represents missing or unavailable data
+- Race names should be matched with the `races.csv` table for full context
+- Weather-related interventions are common at specific circuits (e.g., Belgium, Japan)

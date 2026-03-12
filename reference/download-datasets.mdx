@@ -1,0 +1,269 @@
+---
+title: 'download_datasets.py'
+description: 'Download Formula 1 datasets from Kaggle and create a consolidated zip archive'
+---
+
+## Overview
+
+The `download_datasets.py` script automates the process of downloading Formula 1 datasets from Kaggle and packaging them into a consolidated zip file. This script is designed to run in GitHub Actions workflows with change detection capabilities.
+
+### What It Does
+
+1. Downloads the latest versions of F1 datasets from Kaggle using the kagglehub library
+2. Copies downloaded files to the local `data/` directory
+3. Creates a compressed zip archive (`data.zip`) containing all dataset files
+4. Provides detailed console output for monitoring the download and archiving process
+
+### Dataset Sources
+
+The script downloads from two primary Kaggle datasets:
+
+- `jtrotman/formula-1-race-data` - Core F1 race data tables
+- `jtrotman/formula-1-race-events` - F1 race event information
+
+## Functions
+
+### download_dataset
+
+Downloads a Kaggle dataset and copies it to the target directory.
+
+<ParamField path="dataset_path" type="str" required>
+  Kaggle dataset path in the format `user/dataset-name` (e.g., 'jtrotman/formula-1-race-data')
+</ParamField>
+
+<ParamField path="target_dir" type="Path" required>
+  Directory to copy the downloaded files to
+</ParamField>
+
+<ParamField path="returns" type="bool">
+  Returns `True` if successful, `False` otherwise
+</ParamField>
+
+#### Example Usage
+
+```python
+from pathlib import Path
+from download_datasets import download_dataset
+
+data_dir = Path("./data")
+data_dir.mkdir(exist_ok=True)
+
+success = download_dataset("jtrotman/formula-1-race-data", data_dir)
+if success:
+    print("Dataset downloaded successfully")
+```
+
+#### How It Works
+
+```python
+def download_dataset(dataset_path: str, target_dir: Path) -> bool:
+    # Download using kagglehub (downloads to cache)
+    download_path = kagglehub.dataset_download(dataset_path)
+    
+    # Copy files from cache to target directory
+    source_path = Path(download_path)
+    files_copied = 0
+    for file_path in source_path.rglob("*"):
+        if file_path.is_file():
+            relative_path = file_path.relative_to(source_path)
+            target_file = target_dir / relative_path
+            target_file.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(file_path, target_file)
+            files_copied += 1
+```
+
+### create_zip_archive
+
+Creates a compressed zip archive of all files in the source directory.
+
+<ParamField path="source_dir" type="Path" required>
+  Directory containing files to compress
+</ParamField>
+
+<ParamField path="zip_path" type="Path" required>
+  Output path for the zip file
+</ParamField>
+
+<ParamField path="returns" type="bool">
+  Returns `True` if successful, `False` otherwise
+</ParamField>
+
+#### Example Usage
+
+```python
+from pathlib import Path
+from download_datasets import create_zip_archive
+
+data_dir = Path("./data")
+zip_file = Path("./data.zip")
+
+success = create_zip_archive(data_dir, zip_file)
+if success:
+    print(f"Archive created: {zip_file}")
+```
+
+#### Implementation Details
+
+```python
+def create_zip_archive(source_dir: Path, zip_path: Path) -> bool:
+    # Remove existing zip if present
+    if zip_path.exists():
+        zip_path.unlink()
+    
+    # Create new zip archive
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        files_added = 0
+        for file_path in sorted(source_dir.rglob("*")):
+            if file_path.is_file():
+                arcname = file_path.relative_to(source_dir)
+                zipf.write(file_path, arcname)
+                files_added += 1
+```
+
+### main
+
+Main execution function that orchestrates the download and archiving process.
+
+<ParamField path="returns" type="int">
+  Returns `0` on success, `1` on failure
+</ParamField>
+
+#### Workflow
+
+1. Creates the `data/` directory if it doesn't exist
+2. Downloads all configured Kaggle datasets
+3. Validates that files were downloaded successfully
+4. Creates a consolidated `data.zip` archive
+5. Reports success/failure status
+
+## Usage
+
+### Running the Script
+
+```bash
+python download_datasets.py
+```
+
+### Command Line Execution
+
+The script can be executed directly:
+
+```bash
+./download_datasets.py
+```
+
+### Output Structure
+
+After execution, you'll have:
+
+```
+project/
+├── data/                    # Downloaded CSV files
+│   ├── circuits.csv
+│   ├── constructors.csv
+│   ├── drivers.csv
+│   └── ...
+└── data.zip                 # Compressed archive
+```
+
+## Configuration
+
+### Kaggle Credentials
+
+The script requires Kaggle API credentials to download datasets. Set up your credentials:
+
+1. Create a Kaggle account at [kaggle.com](https://www.kaggle.com)
+2. Go to Account Settings → API → Create New Token
+3. This downloads `kaggle.json` with your credentials
+4. Place the file at `~/.kaggle/kaggle.json`
+
+Or set environment variables:
+
+```bash
+export KAGGLE_USERNAME="your-username"
+export KAGGLE_KEY="your-api-key"
+```
+
+### Adding New Datasets
+
+To download additional datasets, modify the `datasets` list in the `main()` function:
+
+```python
+datasets = [
+    "jtrotman/formula-1-race-data",
+    "jtrotman/formula-1-race-events",
+    "your-user/your-dataset"  # Add new datasets here
+]
+```
+
+## Dependencies
+
+From `pyproject.toml`:
+
+```toml
+dependencies = [
+    "kagglehub==0.3.13",
+    "huggingface-hub==0.35.3",
+]
+```
+
+### Required Packages
+
+- **kagglehub** (0.3.13) - Kaggle dataset download library
+- **pathlib** - File path operations (Python standard library)
+- **zipfile** - ZIP archive creation (Python standard library)
+- **shutil** - High-level file operations (Python standard library)
+
+## GitHub Actions Integration
+
+This script is designed to work seamlessly in GitHub Actions workflows:
+
+```yaml
+- name: Download datasets
+  env:
+    KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+    KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+  run: python download_datasets.py
+```
+
+## Error Handling
+
+The script includes comprehensive error handling:
+
+- **Missing datasets**: Reports which datasets failed to download
+- **Empty data directory**: Exits if no files were downloaded
+- **Zip creation failure**: Reports if archive creation fails
+- **Partial success**: Continues processing even if some datasets fail
+
+## Console Output
+
+The script provides detailed progress information:
+
+```
+Formula 1 Dataset Download Script
+============================================================
+Data directory: /path/to/data
+
+============================================================
+Downloading dataset: jtrotman/formula-1-race-data
+============================================================
+✓ Downloaded to cache: /cache/path
+  → Copied: circuits.csv
+  → Copied: constructors.csv
+✓ Copied 18 file(s) from jtrotman/formula-1-race-data
+
+============================================================
+Download Summary: 2/2 datasets successful
+============================================================
+
+Found 18 file(s) in data directory
+
+============================================================
+Creating zip archive: data.zip
+============================================================
+✓ Created zip with 18 file(s) (4.25 MB)
+
+============================================================
+✓ All operations completed successfully!
+============================================================
+```

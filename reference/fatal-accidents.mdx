@@ -1,0 +1,204 @@
+---
+title: Fatal Accidents
+description: Reference documentation for fatal_accidents_drivers.csv and fatal_accidents_marshalls.csv
+---
+
+<Warning>
+This page documents tragic incidents in Formula 1 history. The data is maintained for historical record and safety awareness.
+</Warning>
+
+These tables record fatal accidents involving drivers and track marshalls in Formula 1 and related racing events.
+
+## Driver Fatal Accidents
+
+The `fatal_accidents_drivers.csv` table documents fatal accidents involving racing drivers.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Driver` | string | Name of the driver |
+| `Age` | integer | Age of the driver at the time of the accident |
+| `Date Of Accident` | string | Date when the accident occurred (M/D/YY format) |
+| `Event` | string | Race or event where the accident occurred |
+| `Car` | string | The car/constructor the driver was using |
+| `Session` | string | Session type (Practice, Qualifying, Race, Test) |
+
+### Sample Data
+
+| Driver | Age | Date Of Accident | Event | Car | Session |
+|--------|-----|------------------|-------|-----|----------|
+| Cameron Earl | 29 | 6/18/52 | N/A | ERA | Test |
+| Chet Miller | 50 | 5/15/53 | 1953 Indianapolis 500 | Kurtis Kraft | Practice |
+| Onofre Marimón | 30 | 7/31/54 | 1954 German Grand Prix | Maserati | Practice |
+| Luigi Musso | 33 | 7/6/58 | 1958 French Grand Prix | Ferrari | Race |
+| Ayrton Senna | 34 | 5/1/94 | 1994 San Marino Grand Prix | Williams | Race |
+| Jules Bianchi | 25 | 10/5/14 | 2014 Japanese Grand Prix | Marussia | Race |
+
+### Dataset Statistics
+
+- **Total Records:** 51 driver fatalities
+- **Date Range:** 1952 - 2014
+- **Most Common Session:** Race (25), Practice (14), Test (7)
+
+---
+
+## Marshall Fatal Accidents
+
+The `fatal_accidents_marshalls.csv` table documents fatal accidents involving track marshalls and officials.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Name` | string | Name of the marshall |
+| `Age` | integer | Age of the marshall at the time of the accident |
+| `Date Of Accident` | string | Date when the accident occurred (M/D/YY format) |
+| `Event` | string | Race or event where the accident occurred |
+
+### Sample Data
+
+| Name | Age | Date Of Accident | Event |
+|------|-----|------------------|-------|
+| Günther Schneider | 19 | 8/4/63 | 1963 German Grand Prix |
+| Jansen van Vuuren | 19 | 3/5/77 | 1977 South African Grand Prix |
+| Paolo Gislimberti | 33 | 9/10/00 | 2000 Italian Grand Prix |
+| Graham Beveridge | 52 | 3/4/01 | 2001 Australian Grand Prix |
+| Mark Robinson | 38 | 6/9/13 | 2013 Canadian Grand Prix |
+
+### Dataset Statistics
+
+- **Total Records:** 5 marshall fatalities
+- **Date Range:** 1963 - 2013
+- **All incidents:** During Grand Prix events
+
+---
+
+## Example Queries
+
+### Count accidents by session type
+
+```python
+import pandas as pd
+
+driver_accidents = pd.read_csv('fatal_accidents_drivers.csv')
+session_counts = driver_accidents['Session'].value_counts()
+print(session_counts)
+```
+
+### Analyze accidents by decade
+
+```python
+driver_accidents['Date Of Accident'] = pd.to_datetime(
+    driver_accidents['Date Of Accident'], 
+    format='%m/%d/%y'
+)
+driver_accidents['decade'] = (driver_accidents['Date Of Accident'].dt.year // 10) * 10
+decade_counts = driver_accidents['decade'].value_counts().sort_index()
+print(decade_counts)
+```
+
+### Find youngest and oldest victims
+
+```python
+youngest = driver_accidents.nsmallest(1, 'Age')
+oldest = driver_accidents.nlargest(1, 'Age')
+print(f"Youngest: {youngest['Driver'].iloc[0]}, Age {youngest['Age'].iloc[0]}")
+print(f"Oldest: {oldest['Driver'].iloc[0]}, Age {oldest['Age'].iloc[0]}")
+```
+
+### List accidents at specific events
+
+```python
+indy_500 = driver_accidents[
+    driver_accidents['Event'].str.contains('Indianapolis 500', na=False)
+]
+print(indy_500[['Driver', 'Date Of Accident', 'Event']])
+```
+
+### Accidents by constructor/car
+
+```python
+car_counts = driver_accidents['Car'].value_counts()
+print("Accidents by car/constructor:")
+print(car_counts.head(10))
+```
+
+### Compare driver vs marshall accidents timeline
+
+```python
+import matplotlib.pyplot as plt
+
+marshall_accidents = pd.read_csv('fatal_accidents_marshalls.csv')
+
+driver_accidents['Date Of Accident'] = pd.to_datetime(
+    driver_accidents['Date Of Accident'], format='%m/%d/%y'
+)
+marshall_accidents['Date Of Accident'] = pd.to_datetime(
+    marshall_accidents['Date Of Accident'], format='%m/%d/%y'
+)
+
+fig, ax = plt.subplots(figsize=(12, 6))
+ax.scatter(driver_accidents['Date Of Accident'], 
+           [1]*len(driver_accidents), 
+           label='Drivers', alpha=0.6)
+ax.scatter(marshall_accidents['Date Of Accident'], 
+           [2]*len(marshall_accidents), 
+           label='Marshalls', alpha=0.6)
+ax.set_xlabel('Date')
+ax.set_title('Fatal Accidents Timeline')
+ax.legend()
+plt.show()
+```
+
+### Famous incidents
+
+```python
+notable_drivers = ['Ayrton Senna', 'Roland Ratzenberger', 'Jules Bianchi', 
+                   'Gilles Villeneuve', 'Jochen Rindt']
+
+notable = driver_accidents[
+    driver_accidents['Driver'].isin(notable_drivers)
+]
+print(notable[['Driver', 'Date Of Accident', 'Event', 'Session']])
+```
+
+## Historical Context
+
+### Early Era (1950s-1960s)
+- Highest number of fatalities
+- Minimal safety equipment
+- Dangerous circuits with limited barriers
+
+### Middle Era (1970s-1980s)
+- Gradual safety improvements
+- Introduction of safety barriers and runoff areas
+- Still significant risks
+
+### Modern Era (1990s-Present)
+- Dramatic safety improvements after Senna's death
+- HANS device, improved crash structures
+- Safer circuit designs
+- Only 2 driver fatalities since 1994 (Bianchi in 2014)
+
+## Safety Improvements
+
+Key safety developments in response to these tragedies:
+
+- **HANS device** (Head and Neck Support)
+- **Halo cockpit protection** (introduced 2018)
+- **Improved crash barriers** (SAFER barriers, tire walls)
+- **Enhanced medical response** (medical car, trackside facilities)
+- **Stricter circuit homologation**
+- **Cockpit extraction improvements**
+- **Fire-resistant suits and equipment**
+
+## Notes
+
+- These tables include both FIA World Championship events and related racing
+- Indianapolis 500 was part of the F1 championship from 1950-1960
+- Some entries marked "N/A" for event indicate testing incidents
+- The last driver fatality in an F1 race weekend was Jules Bianchi (2014)
+- Marshall safety has also improved significantly with better equipment and positioning
+- This data serves as a reminder of the sport's dangerous past and the importance of ongoing safety development
+- Modern F1 has achieved remarkable safety improvements, with no race-day driver fatalities since 1994 (Bianchi's injuries were sustained in 2014 but he passed away in 2015)

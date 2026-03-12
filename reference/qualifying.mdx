@@ -1,0 +1,140 @@
+---
+title: Qualifying
+description: Reference documentation for the qualifying.csv table
+---
+
+The `qualifying.csv` table contains qualifying session results for each Grand Prix, including times from all three qualifying segments (Q1, Q2, Q3).
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `qualifyId` | integer | Unique identifier for each qualifying result |
+| `raceId` | integer | Foreign key to races.csv |
+| `driverId` | integer | Foreign key to drivers.csv |
+| `constructorId` | integer | Foreign key to constructors.csv |
+| `number` | integer | Driver's car number |
+| `position` | integer | Final qualifying position (determines grid position) |
+| `q1` | string | Q1 lap time (MM:SS.mmm format) |
+| `q2` | string | Q2 lap time (MM:SS.mmm format) |
+| `q3` | string | Q3 lap time (MM:SS.mmm format) |
+
+<Warning>
+Qualifying times contain `\N` for null values:
+- `q2` is `\N` for drivers eliminated in Q1 (positions 16-20)
+- `q3` is `\N` for drivers eliminated in Q2 (positions 11-15)
+- Entire qualifying data may be missing for some historical races
+</Warning>
+
+## Sample Data
+
+| qualifyId | raceId | driverId | constructorId | number | position | q1 | q2 | q3 |
+|-----------|--------|----------|---------------|--------|----------|-------|-------|-------|
+| 1 | 18 | 1 | 1 | 22 | 1 | 1:26.572 | 1:25.187 | 1:26.714 |
+| 2 | 18 | 9 | 2 | 4 | 2 | 1:26.103 | 1:25.315 | 1:26.869 |
+| 3 | 18 | 5 | 1 | 23 | 3 | 1:25.664 | 1:25.452 | 1:27.079 |
+| 4 | 18 | 13 | 6 | 2 | 4 | 1:25.994 | 1:25.691 | 1:27.178 |
+
+## Relationships
+
+<Note>
+**References:**
+- `qualifying.raceId` → `races.raceId`
+- `qualifying.driverId` → `drivers.driverId`
+- `qualifying.constructorId` → `constructors.constructorId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 10,992 qualifying results
+- **Date Range:** Varies by race (most complete from 2003 onwards)
+- **Drivers per Session:** ~20
+
+## Qualifying Format
+
+The current three-segment knockout qualifying format:
+
+1. **Q1 (18 minutes):** All drivers participate. Slowest 5 are eliminated (positions 16-20).
+2. **Q2 (15 minutes):** Remaining 15 drivers compete. Slowest 5 are eliminated (positions 11-15).
+3. **Q3 (12 minutes):** Top 10 drivers compete for pole position.
+
+## Example Queries
+
+### Get pole positions for a driver
+
+```python
+import pandas as pd
+
+qualifying = pd.read_csv('qualifying.csv')
+pole_positions = qualifying[qualifying['position'] == 1]
+print(pole_positions[['raceId', 'driverId', 'q3']])
+```
+
+### Find Q1 eliminations
+
+```python
+q1_eliminated = qualifying[
+    (qualifying['position'] >= 16) & 
+    (qualifying['q2'] == '\\N')
+]
+print(q1_eliminated[['raceId', 'driverId', 'position', 'q1']])
+```
+
+### Analyze qualifying progression
+
+```python
+# Top 10 who made it to Q3
+q3_participants = qualifying[qualifying['q3'] != '\\N']
+print(q3_participants[['raceId', 'driverId', 'q1', 'q2', 'q3', 'position']])
+```
+
+### Compare qualifying times
+
+```python
+# For a specific race
+race_quali = qualifying[qualifying['raceId'] == 1000]
+race_quali_sorted = race_quali.sort_values('position')
+print(race_quali_sorted[['position', 'driverId', 'q1', 'q2', 'q3']])
+```
+
+### Calculate qualifying gaps
+
+```python
+import re
+
+def time_to_seconds(time_str):
+    if pd.isna(time_str) or time_str == '\\N':
+        return None
+    parts = re.split('[:\.]', time_str)
+    return int(parts[0]) * 60 + int(parts[1]) + int(parts[2]) / 1000
+
+# Get pole time vs P2 gap
+race_quali = qualifying[qualifying['raceId'] == 1000].copy()
+race_quali['q3_seconds'] = race_quali['q3'].apply(time_to_seconds)
+pole_time = race_quali[race_quali['position'] == 1]['q3_seconds'].iloc[0]
+p2_time = race_quali[race_quali['position'] == 2]['q3_seconds'].iloc[0]
+gap = p2_time - pole_time
+print(f"Gap to pole: {gap:.3f} seconds")
+```
+
+### Join with race and driver data
+
+```python
+races = pd.read_csv('races.csv')
+drivers = pd.read_csv('drivers.csv')
+
+full_quali = qualifying.merge(races, on='raceId') \
+                       .merge(drivers, on='driverId')
+                       
+print(full_quali[['year', 'name', 'forename', 'surname', 'position', 'q3']])
+```
+
+## Notes
+
+- Times are in `MM:SS.mmm` format (minutes:seconds.milliseconds)
+- `\N` indicates the driver didn't participate in that qualifying segment
+- The three-segment knockout format was introduced in 2006
+- Earlier qualifying formats may not have Q1/Q2/Q3 data
+- Grid penalties applied after qualifying are not reflected in these results
+- Weather conditions can significantly affect qualifying times
+- Some races may have used different qualifying formats (e.g., sprint qualifying)

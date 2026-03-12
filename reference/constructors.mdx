@@ -1,0 +1,82 @@
+---
+title: Constructors
+description: Reference documentation for the constructors.csv table
+---
+
+The `constructors.csv` table contains information about all Formula 1 constructor teams that have participated in the championship.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `constructorId` | integer | Unique identifier for each constructor |
+| `constructorRef` | string | Short reference name for the constructor (URL-friendly) |
+| `name` | string | Full official name of the constructor team |
+| `nationality` | string | Nationality/country of the constructor |
+| `url` | string | Wikipedia URL for the constructor |
+
+## Sample Data
+
+| constructorId | constructorRef | name | nationality |
+|---------------|----------------|------|-------------|
+| 1 | mclaren | McLaren | British |
+| 2 | bmw_sauber | BMW Sauber | German |
+| 3 | williams | Williams | British |
+| 4 | renault | Renault | French |
+
+## Relationships
+
+<Note>
+**Referenced by:**
+- `results.constructorId` → `constructors.constructorId`
+- `qualifying.constructorId` → `constructors.constructorId`
+- `sprint_results.constructorId` → `constructors.constructorId`
+- `constructor_standings.constructorId` → `constructors.constructorId`
+- `constructor_results.constructorId` → `constructors.constructorId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 214 constructors
+- **Date Range:** 1950 - Present
+- **Active Teams:** Varies by season
+
+## Example Queries
+
+### Find constructors by nationality
+
+```python
+import pandas as pd
+
+constructors = pd.read_csv('constructors.csv')
+british_teams = constructors[constructors['nationality'] == 'British']
+print(british_teams[['name', 'constructorRef']])
+```
+
+### Get constructor details by reference
+
+```python
+ferrari = constructors[constructors['constructorRef'] == 'ferrari']
+print(ferrari)
+```
+
+### Count constructors by nationality
+
+```python
+nationality_counts = constructors['nationality'].value_counts()
+print(nationality_counts.head(10))
+```
+
+### Search for specific constructor
+
+```python
+red_bull = constructors[constructors['name'].str.contains('Red Bull', case=False)]
+print(red_bull)
+```
+
+## Notes
+
+- Some constructors have changed names over the years (e.g., Sauber → Alfa Romeo → Sauber)
+- The same entity may appear multiple times if it competed under different names
+- Nationality reflects the team's country of origin, not necessarily where they're based
+- Customer teams are listed separately from their engine suppliers

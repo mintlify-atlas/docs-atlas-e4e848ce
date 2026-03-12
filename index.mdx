@@ -1,97 +1,111 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "Formula 1 Race Data Archive"
+description: "Comprehensive historical Formula 1 data from 1950 to present, updated automatically within 3 hours of each race"
 ---
 
-## Setting up
+<div className="bg-[#0B2345] rounded-lg p-8 mb-8">
+  <h1 className="text-4xl font-bold text-white mb-4">
+    70+ Years of Formula 1 Data at Your Fingertips
+  </h1>
+  <p className="text-xl text-gray-300 mb-6">
+    Access comprehensive race data, lap times, pit stops, driver standings, and more. Updated automatically with every race.
+  </p>
+  <div className="flex gap-4">
+    <a href="/quickstart" className="inline-block bg-[#0cd610] hover:bg-[#129813] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+      Get Started
+    </a>
+    <a href="https://github.com/TracingInsights/RaceData" className="inline-block bg-[#3a3a3a] hover:bg-[#4a4a4a] text-white font-semibold px-6 py-3 rounded-lg transition-colors">
+      View on GitHub
+    </a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## Key Features
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Historical Coverage" icon="clock-rotate-left">
+    Complete F1 data from 1950 through the current season with 600K+ lap times and 22K+ pit stops
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Auto-Updated" icon="arrows-rotate">
+    Automated updates within 3 hours of race completion via GitHub Actions
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="18 Data Tables" icon="table">
+    Comprehensive coverage including races, drivers, constructors, lap times, pit stops, and safety events
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Public Domain" icon="unlock">
+    CC0 license allows unrestricted use for analysis, visualization, and research
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Quick Access
 
-Everything you need to create world-class documentation.
+<CardGroup cols={3}>
+  <Card title="Download Data" icon="download" href="/data-access/download">
+    Get the latest dataset from GitHub releases or as a zip archive
+  </Card>
+  <Card title="HuggingFace" icon="face-smile" href="/data-access/huggingface">
+    Access via HuggingFace Datasets for ML and data science workflows
+  </Card>
+  <Card title="Data Schema" icon="database" href="/schema/overview">
+    Explore the complete schema with 18 tables and field descriptions
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## What's Included
 
-## Need inspiration?
+The dataset contains comprehensive Formula 1 information across multiple dimensions:
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+- **Race Information**: Circuits, races, seasons, and session schedules
+- **Participants**: Drivers and constructors with detailed profiles
+- **Performance Data**: Results, qualifying times, sprint results, and standings
+- **Timing Data**: 600K+ individual lap times and 22K+ pit stop records
+- **Safety Events**: Safety car deployments, red flags, and historical accident records
+- **Automation Scripts**: Python utilities for downloading and syncing data
+
+## Get Started
+
+<Steps>
+  <Step title="Choose Your Access Method">
+    Download the complete dataset from [GitHub releases](https://github.com/TracingInsights/RaceData/releases/latest/download/data.zip), use the [HuggingFace Datasets](/data-access/huggingface) integration, or access programmatically via Python scripts.
+  </Step>
+  <Step title="Explore the Schema">
+    Review the [data schema](/schema/overview) to understand the 18 available tables and their relationships.
+  </Step>
+  <Step title="Start Analyzing">
+    Load the data into your preferred tool (pandas, SQL, Excel) and begin your analysis. Check out our [guides](/guides/data-analysis) for examples.
+  </Step>
+</Steps>
+
+## Data Coverage
+
+<Accordion title="Available Data Tables">
+- **circuits.csv** - Circuit information with geolocation (79 circuits)
+- **drivers.csv** - Driver profiles and metadata (866 drivers)
+- **constructors.csv** - Constructor/team information (215 constructors)
+- **races.csv** - Race schedules and session times (1,174 races)
+- **results.csv** - Race finishing results and points (27,261 results)
+- **qualifying.csv** - Qualifying session times Q1/Q2/Q3 (10,993 sessions)
+- **sprint_results.csv** - Sprint race results (481 results)
+- **lap_times.csv** - Individual lap times by driver (616,742 laps)
+- **pit_stops.csv** - Pit stop durations and timings (22,146 stops)
+- **driver_standings.csv** - Championship standings after each race (35,384 entries)
+- **constructor_standings.csv** - Constructor championship standings (13,643 entries)
+- **safety_cars.csv** - Safety car deployment data (365 deployments)
+- **red_flags.csv** - Red flag incidents (99 incidents)
+- **fatal_accidents_drivers.csv** - Driver fatality records (52 records)
+- **fatal_accidents_marshalls.csv** - Marshall fatality records (6 records)
+- **virtual_safety_car_estimates.json** - VSC period estimates
+- **seasons.csv** - Season information (78 seasons)
+- **status.csv** - Race finishing status codes (140 status types)
+</Accordion>
+
+## Community & Support
+
+<CardGroup cols={2}>
+  <Card title="Report Issues" icon="flag" href="https://github.com/TracingInsights/RaceData/issues">
+    Found an error or have a feature request? Open an issue on GitHub
+  </Card>
+  <Card title="TracingInsights" icon="chart-line" href="https://tracinginsights.com">
+    Visit the main TracingInsights website for F1 analysis and visualizations
+  </Card>
+</CardGroup>

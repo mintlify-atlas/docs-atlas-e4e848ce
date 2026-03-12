@@ -1,0 +1,160 @@
+---
+title: Pit Stops
+description: Reference documentation for the pit_stops.csv table
+---
+
+The `pit_stops.csv` table contains detailed information about every pit stop made during Formula 1 races.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `raceId` | integer | Foreign key to races.csv |
+| `driverId` | integer | Foreign key to drivers.csv |
+| `stop` | integer | Pit stop number for this driver in this race (1, 2, 3, etc.) |
+| `lap` | integer | Lap number when the pit stop occurred |
+| `time` | time | Time of day when the pit stop occurred (HH:MM:SS) |
+| `duration` | string | Duration of the pit stop in seconds |
+| `milliseconds` | integer | Duration of the pit stop in milliseconds |
+
+<Note>
+This table uses a composite key of `(raceId, driverId, stop)` rather than a single unique identifier.
+</Note>
+
+## Sample Data
+
+| raceId | driverId | stop | lap | time | duration | milliseconds |
+|--------|----------|------|-----|------|----------|-------------|
+| 258 | 100 | 1 | 1 | 14:01:34 | 49.111 | 49111 |
+| 258 | 79 | 1 | 17 | 14:20:46 | 28.482 | 28482 |
+| 258 | 57 | 1 | 18 | 14:22:35 | 43.745 | 43745 |
+| 258 | 71 | 1 | 18 | 14:23:00 | 21.992 | 21992 |
+
+## Relationships
+
+<Note>
+**References:**
+- `pit_stops.raceId` → `races.raceId`
+- `pit_stops.driverId` → `drivers.driverId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 22,145 pit stops
+- **Date Range:** Pit stop data available from 2011 onwards
+- **Stops per Race:** Varies (typically 1-3 per driver)
+
+## Example Queries
+
+### Get all pit stops for a race
+
+```python
+import pandas as pd
+
+pit_stops = pd.read_csv('pit_stops.csv')
+race_stops = pit_stops[pit_stops['raceId'] == 841]
+race_stops_sorted = race_stops.sort_values('lap')
+print(race_stops_sorted[['driverId', 'stop', 'lap', 'duration']])
+```
+
+### Find fastest pit stops
+
+```python
+fastest_stops = pit_stops.nsmallest(10, 'milliseconds')
+print(fastest_stops[['raceId', 'driverId', 'duration', 'milliseconds']])
+```
+
+### Analyze pit stop strategies
+
+```python
+# Count stops per driver in a race
+race_stops = pit_stops[pit_stops['raceId'] == 1000]
+strategy_counts = race_stops.groupby('driverId')['stop'].max()
+print("Drivers by number of stops:")
+print(strategy_counts.value_counts().sort_index())
+```
+
+### Calculate average pit stop duration by race
+
+```python
+avg_duration = pit_stops.groupby('raceId')['milliseconds'].mean()
+print(avg_duration.head())
+```
+
+### Find pit stop lap distribution
+
+```python
+import matplotlib.pyplot as plt
+
+race_stops = pit_stops[pit_stops['raceId'] == 1000]
+plt.hist(race_stops['lap'], bins=20)
+plt.xlabel('Lap Number')
+plt.ylabel('Number of Pit Stops')
+plt.title('Pit Stop Distribution Throughout Race')
+plt.show()
+```
+
+### Identify unusual pit stop durations
+
+```python
+# Stops longer than 10 seconds (potential issues)
+slow_stops = pit_stops[pit_stops['milliseconds'] > 10000]
+print(slow_stops[['raceId', 'driverId', 'lap', 'duration']].head(20))
+```
+
+### Compare pit stop performance by constructor
+
+```python
+results = pd.read_csv('results.csv')
+
+stops_with_constructor = pit_stops.merge(
+    results[['raceId', 'driverId', 'constructorId']], 
+    on=['raceId', 'driverId']
+)
+
+avg_by_constructor = stops_with_constructor.groupby('constructorId')['milliseconds'].mean()
+print(avg_by_constructor.sort_values().head(10))
+```
+
+### Analyze undercut/overcut strategies
+
+```python
+# Find drivers who pitted earlier/later than competitors
+race_stops = pit_stops[pit_stops['raceId'] == 1000]
+first_stops = race_stops[race_stops['stop'] == 1]
+first_stops_sorted = first_stops.sort_values('lap')
+print(first_stops_sorted[['driverId', 'lap', 'time']])
+```
+
+### Calculate pit stop time trend over seasons
+
+```python
+races = pd.read_csv('races.csv')
+
+stops_with_year = pit_stops.merge(races[['raceId', 'year']], on='raceId')
+avg_by_year = stops_with_year.groupby('year')['milliseconds'].mean()
+
+print("Average pit stop duration by year:")
+print(avg_by_year)
+```
+
+## Pit Stop Records
+
+- **Fastest pit stop:** Typically under 2 seconds (modern era)
+- **Typical duration:** 2-3 seconds for tire change (2010s-present)
+- **Common strategies:**
+  - One-stop: Single pit stop during race
+  - Two-stop: Two pit stops (most common)
+  - Three-stop: Three or more stops (rare, usually weather-related)
+
+## Notes
+
+- Pit stop timing data is available from 2011 onwards
+- Duration includes time from pit entry to pit exit
+- Very long pit stops (30+ seconds) often indicate mechanical issues or penalties
+- Pit stop strategy significantly affects race outcomes
+- `time` field shows time of day (race-local time)
+- Red flag periods may affect pit stop strategies
+- Modern pit stops (2018+) average around 2-2.5 seconds
+- Regulations on number of mechanics allowed affect pit stop times
+- The `stop` field helps identify one-stop, two-stop, etc. strategies

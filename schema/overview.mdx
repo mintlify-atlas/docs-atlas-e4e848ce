@@ -1,0 +1,188 @@
+---
+title: 'Schema Overview'
+description: 'Complete overview of the RaceData Formula 1 dataset schema with 18 tables covering races from 1950 to present'
+---
+
+## Introduction
+
+The RaceData Formula 1 dataset is a comprehensive collection of Formula 1 race data spanning from 1950 to the present. The dataset consists of **18 tables** organized into logical groups covering races, participants, performance data, and safety incidents.
+
+## Dataset Structure
+
+The dataset is organized into the following categories:
+
+### Core Race Data
+- **circuits.csv** - Information about F1 circuits and venues
+- **seasons.csv** - Formula 1 season metadata
+- **races.csv** - Individual race events with dates and session schedules
+
+### Participants
+- **drivers.csv** - Driver profiles and biographical information
+- **constructors.csv** - Constructor/team information
+
+### Performance & Results
+- **results.csv** - Main race results and finishing positions
+- **qualifying.csv** - Qualifying session results (Q1, Q2, Q3)
+- **sprint_results.csv** - Sprint race results
+- **lap_times.csv** - Individual lap times for each driver
+- **pit_stops.csv** - Pit stop data including duration and timing
+- **status.csv** - Finishing status codes (Finished, Accident, Engine, etc.)
+
+### Standings
+- **driver_standings.csv** - Driver championship standings after each race
+- **constructor_standings.csv** - Constructor championship standings
+- **constructor_results.csv** - Constructor results per race
+
+### Safety & Incidents
+- **safety_cars.csv** - Safety car deployment periods
+- **red_flags.csv** - Red flag incidents and race stoppages
+- **virtual_safety_car_estimates.json** - Virtual safety car period estimates
+- **fatal_accidents_drivers.csv** - Historical fatal accidents involving drivers
+- **fatal_accidents_marshalls.csv** - Historical fatal accidents involving marshals
+
+## Entity Relationship Diagram
+
+```
+seasons ──┐
+          │
+          ├─→ races ──┬─→ circuits
+          │           │
+          │           ├─→ results ──┬─→ drivers
+          │           │             ├─→ constructors
+          │           │             └─→ status
+          │           │
+          │           ├─→ qualifying ──┬─→ drivers
+          │           │                └─→ constructors
+          │           │
+          │           ├─→ sprint_results ──┬─→ drivers
+          │           │                     ├─→ constructors
+          │           │                     └─→ status
+          │           │
+          │           ├─→ lap_times ──→ drivers
+          │           │
+          │           ├─→ pit_stops ──→ drivers
+          │           │
+          │           ├─→ driver_standings ──→ drivers
+          │           │
+          │           └─→ constructor_standings ──→ constructors
+          │
+          └─→ constructor_results ──┬─→ races
+                                     └─→ constructors
+```
+
+## Key Foreign Key Relationships
+
+<Note>
+All relationships use numeric IDs as foreign keys. The primary identifier fields end with `Id` (e.g., `raceId`, `driverId`, `constructorId`).
+</Note>
+
+### races.csv Foreign Keys
+- `circuitId` → `circuits.circuitId`
+- `year` → `seasons.year`
+
+### results.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+- `constructorId` → `constructors.constructorId`
+- `statusId` → `status.statusId`
+
+### qualifying.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+- `constructorId` → `constructors.constructorId`
+
+### sprint_results.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+- `constructorId` → `constructors.constructorId`
+- `statusId` → `status.statusId`
+
+### lap_times.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+
+### pit_stops.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+
+### driver_standings.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `driverId` → `drivers.driverId`
+
+### constructor_standings.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `constructorId` → `constructors.constructorId`
+
+### constructor_results.csv Foreign Keys
+- `raceId` → `races.raceId`
+- `constructorId` → `constructors.constructorId`
+
+## Data Model Characteristics
+
+### Time Range
+- **Start**: 1950 (first Formula 1 season)
+- **End**: Present (updated within 3 hours of race completion)
+
+### Data Format
+- **File Format**: CSV (comma-separated values) and JSON
+- **Null Values**: Represented as `\N` in CSV files
+- **Encoding**: UTF-8
+
+### Update Frequency
+- Automated updates via GitHub Actions
+- Updates occur within **3 hours** of race completion
+- Historical data is static
+
+## Common Query Patterns
+
+### Get All Results for a Specific Race
+```sql
+SELECT r.*, d.forename, d.surname, c.name as constructor
+FROM results r
+JOIN drivers d ON r.driverId = d.driverId
+JOIN constructors c ON r.constructorId = c.constructorId
+WHERE r.raceId = [race_id]
+ORDER BY r.positionOrder
+```
+
+### Get Driver Championship Standings for a Season
+```sql
+SELECT ds.*, d.forename, d.surname, ra.year
+FROM driver_standings ds
+JOIN drivers d ON ds.driverId = d.driverId
+JOIN races ra ON ds.raceId = ra.raceId
+WHERE ra.year = [year]
+AND ra.round = (SELECT MAX(round) FROM races WHERE year = [year])
+ORDER BY ds.position
+```
+
+### Get Lap Times for a Driver in a Race
+```sql
+SELECT lt.*, d.forename, d.surname
+FROM lap_times lt
+JOIN drivers d ON lt.driverId = d.driverId
+WHERE lt.raceId = [race_id]
+AND lt.driverId = [driver_id]
+ORDER BY lt.lap
+```
+
+## Data Quality Notes
+
+<Note>
+**Historical Data Limitations**: Older races (especially pre-1980s) may have incomplete data for fields like lap times, pit stops, and session schedules. The `\N` value indicates missing data.
+</Note>
+
+<Note>
+**Sprint Races**: Sprint race data is only available from 2021 onwards when the sprint format was introduced.
+</Note>
+
+<Note>
+**Practice Sessions**: Free practice session dates and times (`fp1_date`, `fp1_time`, etc.) are more complete for recent seasons.
+</Note>
+
+## Next Steps
+
+- [Race-Related Tables](/schema/races) - Detailed schema for races, seasons, and circuits
+- [Participants](/schema/drivers-constructors) - Driver and constructor schemas
+- [Performance Data](/schema/performance) - Results, qualifying, lap times, and pit stops
+- [Safety & Incidents](/schema/safety-incidents) - Safety car, red flags, and accidents

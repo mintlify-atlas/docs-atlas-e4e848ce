@@ -1,0 +1,497 @@
+---
+title: 'Programmatic Access'
+description: 'Automate dataset downloads and updates using Python scripts'
+icon: 'code'
+---
+
+The RaceData project includes Python scripts for automated downloading and updating of Formula 1 datasets. This guide shows you how to use these scripts for programmatic access.
+
+## Overview
+
+The repository includes two main scripts for programmatic data access:
+
+- **`download_datasets.py`** - Downloads F1 datasets from Kaggle and creates consolidated archives
+- **`upload_to_hf.py`** - Uploads datasets to HuggingFace Hub (for maintainers)
+
+## Prerequisites
+
+<Steps>
+  <Step title="Install Required Libraries">
+    Install the necessary Python packages:
+
+    ```bash
+    pip install kagglehub huggingface-hub
+    ```
+
+    <Note>
+      `kagglehub` is required for downloading from Kaggle, while `huggingface-hub` is needed for HuggingFace uploads.
+    </Note>
+  </Step>
+
+  <Step title="Set Up Kaggle API Credentials">
+    To download datasets from Kaggle, you need API credentials:
+
+    1. Go to your [Kaggle account settings](https://www.kaggle.com/settings)
+    2. Scroll to the "API" section
+    3. Click "Create New Token" to download `kaggle.json`
+    4. Place the file in `~/.kaggle/kaggle.json` (Linux/Mac) or `C:\Users\<Windows-username>\.kaggle\kaggle.json` (Windows)
+
+    ```bash
+    # Linux/Mac
+    mkdir -p ~/.kaggle
+    cp /path/to/downloaded/kaggle.json ~/.kaggle/
+    chmod 600 ~/.kaggle/kaggle.json
+    ```
+
+    <Warning>
+      Keep your `kaggle.json` file secure and never commit it to version control.
+    </Warning>
+  </Step>
+</Steps>
+
+## Using download_datasets.py
+
+The `download_datasets.py` script automates the process of downloading Formula 1 datasets from Kaggle.
+
+### Basic Usage
+
+```bash
+# Clone the repository
+git clone https://github.com/TracingInsights/RaceData.git
+cd RaceData
+
+# Run the download script
+python download_datasets.py
+```
+
+### How It Works
+
+The script performs the following operations:
+
+<Steps>
+  <Step title="Download from Kaggle">
+    Downloads the latest versions of two Kaggle datasets:
+    - `jtrotman/formula-1-race-data`
+    - `jtrotman/formula-1-race-events`
+  </Step>
+
+  <Step title="Copy to Data Directory">
+    Copies all downloaded CSV files to the `data/` directory in the repository.
+  </Step>
+
+  <Step title="Create Zip Archive">
+    Creates a consolidated `data.zip` file containing all datasets.
+  </Step>
+</Steps>
+
+### Script Source Code
+
+Here's the core functionality from `download_datasets.py`:
+
+<CodeGroup>
+
+```python Download Function
+def download_dataset(dataset_path: str, target_dir: Path) -> bool:
+    """
+    Download a Kaggle dataset and copy to target directory.
+
+    Args:
+        dataset_path: Kaggle dataset path (e.g., 'user/dataset-name')
+        target_dir: Directory to copy files to
+
+    Returns:
+        True if successful, False otherwise
+    """
+    print(f"\n{'=' * 60}")
+    print(f"Downloading dataset: {dataset_path}")
+    print(f"{'=' * 60}")
+
+    try:
+        # Download using kagglehub (downloads to cache)
+        download_path = kagglehub.dataset_download(dataset_path)
+        print(f"✓ Downloaded to cache: {download_path}")
+
+        # Copy files from cache to target directory
+        source_path = Path(download_path)
+        if not source_path.exists():
+            print(f"✗ Error: Downloaded path does not exist: {source_path}")
+            return False
+
+        # Copy all files from the downloaded dataset
+        files_copied = 0
+        for file_path in source_path.rglob("*"):
+            if file_path.is_file():
+                # Preserve relative structure if needed, or flatten
+                relative_path = file_path.relative_to(source_path)
+                target_file = target_dir / relative_path
+
+                # Create parent directories if needed
+                target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                # Copy file
+                shutil.copy2(file_path, target_file)
+                print(f"  → Copied: {relative_path}")
+                files_copied += 1
+
+        print(f"✓ Copied {files_copied} file(s) from {dataset_path}")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error downloading {dataset_path}: {e}")
+        return False
+```
+
+```python Create Archive Function
+def create_zip_archive(source_dir: Path, zip_path: Path) -> bool:
+    """
+    Create a zip archive of all files in source directory.
+
+    Args:
+        source_dir: Directory containing files to zip
+        zip_path: Output zip file path
+
+    Returns:
+        True if successful, False otherwise
+    """
+    print(f"\n{'=' * 60}")
+    print(f"Creating zip archive: {zip_path.name}")
+    print(f"{'=' * 60}")
+
+    try:
+        # Remove existing zip if present
+        if zip_path.exists():
+            zip_path.unlink()
+            print(f"  Removed existing zip file")
+
+        # Create new zip archive
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            files_added = 0
+            for file_path in sorted(source_dir.rglob("*")):
+                if file_path.is_file():
+                    # Store relative path in zip
+                    arcname = file_path.relative_to(source_dir)
+                    zipf.write(file_path, arcname)
+                    print(f"  → Added: {arcname}")
+                    files_added += 1
+
+        zip_size_mb = zip_path.stat().st_size / (1024 * 1024)
+        print(f"✓ Created zip with {files_added} file(s) ({zip_size_mb:.2f} MB)")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error creating zip archive: {e}")
+        return False
+```
+
+```python Main Function
+def main():
+    """Main execution function."""
+    print("Formula 1 Dataset Download Script")
+    print("=" * 60)
+
+    # Define paths
+    project_root = Path(__file__).parent
+    data_dir = project_root / "data"
+    zip_file = project_root / "data.zip"
+
+    # Create data directory if it doesn't exist
+    data_dir.mkdir(exist_ok=True)
+    print(f"Data directory: {data_dir}")
+
+    # Kaggle dataset paths
+    datasets = ["jtrotman/formula-1-race-data", "jtrotman/formula-1-race-events"]
+
+    # Download all datasets
+    success_count = 0
+    for dataset in datasets:
+        if download_dataset(dataset, data_dir):
+            success_count += 1
+
+    # Report download results
+    print(f"\n{'=' * 60}")
+    print(f"Download Summary: {success_count}/{len(datasets)} datasets successful")
+    print(f"{'=' * 60}")
+
+    if success_count == 0:
+        print("✗ No datasets downloaded successfully. Exiting.")
+        return 1
+
+    # Create zip archive
+    if create_zip_archive(data_dir, zip_file):
+        print(f"\n{'=' * 60}")
+        print("✓ All operations completed successfully!")
+        print(f"{'=' * 60}")
+        return 0
+    else:
+        print("\n✗ Failed to create zip archive")
+        return 1
+```
+
+</CodeGroup>
+
+## Custom Integration
+
+You can integrate the download functionality into your own Python projects:
+
+### Example: Custom Download Script
+
+```python custom_download.py
+import kagglehub
+from pathlib import Path
+import shutil
+
+def download_f1_data(output_dir: str = "./f1_data"):
+    """
+    Download Formula 1 datasets to a custom directory.
+    
+    Args:
+        output_dir: Directory to save the downloaded files
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Download F1 race data
+    print("Downloading Formula 1 race data...")
+    race_data = kagglehub.dataset_download("jtrotman/formula-1-race-data")
+    
+    # Copy files to output directory
+    source = Path(race_data)
+    for file in source.glob("*.csv"):
+        dest = output_path / file.name
+        shutil.copy2(file, dest)
+        print(f"Copied: {file.name}")
+    
+    print(f"\nData downloaded to: {output_path.absolute()}")
+
+if __name__ == "__main__":
+    download_f1_data()
+```
+
+### Example: Selective Download
+
+```python selective_download.py
+import kagglehub
+from pathlib import Path
+import shutil
+import pandas as pd
+
+def download_specific_tables(tables: list[str], output_dir: str = "./f1_data"):
+    """
+    Download only specific F1 data tables.
+    
+    Args:
+        tables: List of CSV filenames to download (e.g., ['drivers.csv', 'races.csv'])
+        output_dir: Directory to save the files
+    """
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Download the dataset
+    print("Downloading Formula 1 datasets...")
+    data_path = kagglehub.dataset_download("jtrotman/formula-1-race-data")
+    source = Path(data_path)
+    
+    # Copy only specified tables
+    for table in tables:
+        src_file = source / table
+        if src_file.exists():
+            dest_file = output_path / table
+            shutil.copy2(src_file, dest_file)
+            print(f"✓ Copied: {table}")
+            
+            # Optionally load into pandas
+            df = pd.read_csv(dest_file)
+            print(f"  Rows: {len(df):,}")
+        else:
+            print(f"✗ Not found: {table}")
+
+if __name__ == "__main__":
+    # Download only drivers, races, and results
+    download_specific_tables([
+        'drivers.csv',
+        'races.csv',
+        'results.csv',
+        'lap_times.csv'
+    ])
+```
+
+## Automated Updates
+
+The RaceData repository uses GitHub Actions to automatically update the dataset within 3 hours after each race. You can implement similar automation:
+
+### Example: Scheduled Updates with Cron
+
+```python scheduled_update.py
+import schedule
+import time
+from datetime import datetime
+import subprocess
+
+def update_f1_data():
+    """
+    Run the download script to update F1 data.
+    """
+    print(f"\n[{datetime.now()}] Starting F1 data update...")
+    
+    try:
+        # Run the download script
+        result = subprocess.run(
+            ['python', 'download_datasets.py'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        print(result.stdout)
+        print(f"✓ Update completed successfully")
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Update failed: {e}")
+        print(e.stderr)
+
+# Schedule updates every Monday at 10:00 AM
+schedule.every().monday.at("10:00").do(update_f1_data)
+
+# Or schedule after every race (customize based on F1 calendar)
+schedule.every().sunday.at("20:00").do(update_f1_data)  # After typical race time
+
+print("F1 Data Update Scheduler Started")
+print("Press Ctrl+C to stop")
+
+while True:
+    schedule.run_pending()
+    time.sleep(60)  # Check every minute
+```
+
+## Upload to HuggingFace (Maintainers)
+
+For maintainers who want to upload data to HuggingFace, use the `upload_to_hf.py` script:
+
+### Setup
+
+```bash
+# Install HuggingFace Hub library
+pip install huggingface-hub
+
+# Set environment variables
+export HF_TOKEN="your_huggingface_token"
+export HF_REPO_ID="username/dataset-name"
+
+# Run upload script
+python upload_to_hf.py
+```
+
+### Upload Function
+
+From `upload_to_hf.py`:
+
+```python
+def upload_to_huggingface(
+    source_dir: Path, repo_id: str, token: str | None = None
+) -> bool:
+    """
+    Upload datasets to HuggingFace Hub.
+
+    Args:
+        source_dir: Directory containing files to upload
+        repo_id: HuggingFace repository ID (e.g., 'username/dataset-name')
+        token: HuggingFace API token (if None, will use HF_TOKEN env var)
+
+    Returns:
+        True if successful, False otherwise
+    """
+    print(f"\n{'=' * 60}")
+    print(f"Uploading to HuggingFace: {repo_id}")
+    print(f"{'=' * 60}")
+
+    # Check if token is provided
+    if token is None:
+        token = os.environ.get("HF_TOKEN")
+
+    if not token:
+        print("✗ No HuggingFace token provided. Skipping upload.")
+        return False
+
+    try:
+        api = HfApi()
+
+        # Check if dataset exists, create if not
+        try:
+            api.dataset_info(repo_id, token=token)
+            print(f"✓ Dataset repository exists: {repo_id}")
+        except Exception:
+            print(f"  Creating new dataset repository: {repo_id}")
+            api.create_repo(
+                repo_id=repo_id, repo_type="dataset", token=token, exist_ok=True
+            )
+
+        # Upload all files from the data directory
+        upload_folder(
+            folder_path=str(source_dir),
+            repo_id=repo_id,
+            repo_type="dataset",
+            token=token,
+            commit_message=f"Update F1 datasets - {os.environ.get('COMMIT_DATE', 'manual update')}",
+        )
+
+        print(f"✓ Successfully uploaded to HuggingFace")
+        print(f"  View at: https://huggingface.co/datasets/{repo_id}")
+        return True
+
+    except Exception as e:
+        print(f"✗ Error uploading to HuggingFace: {e}")
+        return False
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Kaggle API credentials not found">
+    Ensure your `kaggle.json` file is in the correct location:
+
+    ```bash
+    # Check if file exists
+    ls -la ~/.kaggle/kaggle.json
+
+    # Verify permissions (should be 600)
+    chmod 600 ~/.kaggle/kaggle.json
+    ```
+  </Accordion>
+
+  <Accordion title="Dataset download fails">
+    If the download fails, try:
+
+    1. Verify your Kaggle API credentials are valid
+    2. Check your internet connection
+    3. Ensure you've accepted the dataset license on Kaggle's website
+    4. Update `kagglehub` to the latest version: `pip install --upgrade kagglehub`
+  </Accordion>
+
+  <Accordion title="Permission denied errors">
+    Make sure you have write permissions to the output directory:
+
+    ```bash
+    # Create directory with proper permissions
+    mkdir -p ./data
+    chmod 755 ./data
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Direct Download" icon="download" href="/data-access/download">
+    Download the dataset as a zip file
+  </Card>
+  
+  <Card title="HuggingFace Access" icon="face-smile" href="/data-access/huggingface">
+    Use HuggingFace Datasets library
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Start analyzing F1 data in minutes
+  </Card>
+  
+  <Card title="Data Schema" icon="book" href="/schema/overview">
+    Learn about the data structure
+  </Card>
+</CardGroup>

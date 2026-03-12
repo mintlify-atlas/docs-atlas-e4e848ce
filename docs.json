@@ -1,122 +1,113 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "RaceData",
+  "theme": "sequoia",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0cd610",
+    "light": "#11681e",
+    "dark": "#129813"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "https://media.brand.dev/30a67a65-794a-4224-a4d3-ff3bfb57fe6c.jpg",
+  "logo": {
+    "light": "https://media.brand.dev/ccc3ca1b-fab6-4fe0-a7b5-28dbee022e5b.png",
+    "dark": "https://media.brand.dev/ccc3ca1b-fab6-4fe0-a7b5-28dbee022e5b.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/TracingInsights/RaceData"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/TracingInsights/RaceData",
+      "website": "https://tracinginsights.com"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Data Access",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "data-access/download",
+              "data-access/huggingface",
+              "data-access/programmatic"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Data Schema",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "schema/overview",
+              "schema/races",
+              "schema/drivers-constructors",
+              "schema/performance",
+              "schema/safety-incidents"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Guides",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/data-analysis",
+              "guides/querying",
+              "guides/visualization",
+              "guides/integrations"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Tables",
             "pages": [
-              "api-reference/introduction"
+              "reference/circuits",
+              "reference/constructors",
+              "reference/drivers",
+              "reference/races",
+              "reference/results",
+              "reference/qualifying",
+              "reference/sprint-results",
+              "reference/lap-times",
+              "reference/pit-stops",
+              "reference/standings",
+              "reference/safety-events",
+              "reference/fatal-accidents"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Scripts",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "reference/download-datasets",
+              "reference/upload-hf"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "About",
+        "groups": [
+          {
+            "group": "Project",
+            "pages": [
+              "about/faq",
+              "about/license",
+              "about/contributing",
+              "about/changelog"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

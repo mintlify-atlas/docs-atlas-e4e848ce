@@ -1,0 +1,264 @@
+---
+title: 'Drivers & Constructors'
+description: 'Detailed schemas for drivers and constructors (teams) tables'
+---
+
+## Overview
+
+The drivers and constructors tables contain biographical and identifying information about the participants in Formula 1 races. These tables remain relatively static, with new entries added as new drivers and teams join the sport.
+
+## drivers.csv
+
+Comprehensive information about every driver who has participated in Formula 1.
+
+### Schema
+
+<ParamField path="driverId" type="integer" required>
+  Unique identifier for each driver. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="driverRef" type="string" required>
+  Short reference name for the driver (URL-friendly, usually surname).
+  
+  **Example**: `"hamilton"`
+</ParamField>
+
+<ParamField path="number" type="integer">
+  The driver's permanent car number (introduced in 2014). May be `\N` for older drivers or drivers without a permanent number.
+  
+  **Example**: `44`
+</ParamField>
+
+<ParamField path="code" type="string">
+  Three-letter driver code (e.g., HAM, VER, LEC). May be `\N` for drivers who raced before codes were introduced.
+  
+  **Example**: `"HAM"`
+</ParamField>
+
+<ParamField path="forename" type="string" required>
+  Driver's first name.
+  
+  **Example**: `"Lewis"`
+</ParamField>
+
+<ParamField path="surname" type="string" required>
+  Driver's last name.
+  
+  **Example**: `"Hamilton"`
+</ParamField>
+
+<ParamField path="dob" type="date" required>
+  Driver's date of birth in YYYY-MM-DD format.
+  
+  **Example**: `"1985-01-07"`
+</ParamField>
+
+<ParamField path="nationality" type="string" required>
+  Driver's nationality.
+  
+  **Example**: `"British"`
+</ParamField>
+
+<ParamField path="url" type="string">
+  Wikipedia URL for the driver's biography.
+  
+  **Example**: `"http://en.wikipedia.org/wiki/Lewis_Hamilton"`
+</ParamField>
+
+### Sample Data
+
+| driverId | driverRef | number | code | forename | surname | dob | nationality |
+|----------|-----------|--------|------|----------|---------|-----|-------------|
+| 1 | hamilton | 44 | HAM | Lewis | Hamilton | 1985-01-07 | British |
+| 2 | heidfeld | \N | HEI | Nick | Heidfeld | 1977-05-10 | German |
+| 3 | rosberg | 6 | ROS | Nico | Rosberg | 1985-06-27 | German |
+| 4 | alonso | 14 | ALO | Fernando | Alonso | 1981-07-29 | Spanish |
+
+### Historical Context
+
+<Note>
+**Permanent Numbers**: The permanent driver number system was introduced in 2014. Drivers who raced before this era have `\N` for the `number` field.
+</Note>
+
+<Note>
+**Three-Letter Codes**: Driver codes (HAM, VER, etc.) were introduced in the 2010s. Historical drivers may have codes assigned retroactively or may have `\N`.
+</Note>
+
+<Note>
+**Multiple Nationalities**: Some drivers have represented different nationalities during their careers due to geopolitical changes or dual citizenship. The dataset typically uses their most recent or primary nationality.
+</Note>
+
+### Example Queries
+
+#### Get All British Drivers
+```sql
+SELECT driverId, forename, surname, dob, code
+FROM drivers
+WHERE nationality = 'British'
+ORDER BY dob DESC
+```
+
+#### Calculate Driver Age at First Race
+```sql
+SELECT 
+    d.forename,
+    d.surname,
+    d.dob,
+    MIN(r.date) as first_race_date,
+    YEAR(MIN(r.date)) - YEAR(d.dob) as age_at_debut
+FROM drivers d
+JOIN results res ON d.driverId = res.driverId
+JOIN races r ON res.raceId = r.raceId
+GROUP BY d.driverId
+ORDER BY age_at_debut
+```
+
+---
+
+## constructors.csv
+
+Information about Formula 1 constructors (teams) throughout history.
+
+### Schema
+
+<ParamField path="constructorId" type="integer" required>
+  Unique identifier for each constructor. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="constructorRef" type="string" required>
+  Short reference name for the constructor (URL-friendly).
+  
+  **Example**: `"mclaren"`
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Full official name of the constructor.
+  
+  **Example**: `"McLaren"`
+</ParamField>
+
+<ParamField path="nationality" type="string" required>
+  Nationality of the constructor.
+  
+  **Example**: `"British"`
+</ParamField>
+
+<ParamField path="url" type="string">
+  Wikipedia URL for the constructor.
+  
+  **Example**: `"http://en.wikipedia.org/wiki/McLaren"`
+</ParamField>
+
+### Sample Data
+
+| constructorId | constructorRef | name | nationality |
+|---------------|----------------|------|-------------|
+| 1 | mclaren | McLaren | British |
+| 2 | bmw_sauber | BMW Sauber | German |
+| 3 | williams | Williams | British |
+| 4 | renault | Renault | French |
+
+### Historical Context
+
+<Note>
+**Team Name Changes**: Many constructors have changed names over the years (e.g., Sauber → Alfa Romeo → Sauber). Each distinct entity typically has its own `constructorId`.
+</Note>
+
+<Note>
+**Manufacturer Teams vs. Customer Teams**: The dataset includes both factory/manufacturer teams (Ferrari, Mercedes) and customer teams (Racing Point, Haas) without explicit distinction.
+</Note>
+
+<Note>
+**Historic Teams**: The dataset includes all constructors from 1950 onwards, including teams that only competed for a single season.
+</Note>
+
+### Example Queries
+
+#### Get All Italian Constructors
+```sql
+SELECT constructorId, name, constructorRef
+FROM constructors
+WHERE nationality = 'Italian'
+ORDER BY name
+```
+
+#### Count Races by Constructor
+```sql
+SELECT 
+    c.name,
+    c.nationality,
+    COUNT(DISTINCT r.raceId) as total_races,
+    MIN(ra.year) as first_season,
+    MAX(ra.year) as last_season
+FROM constructors c
+JOIN results r ON c.constructorId = r.constructorId
+JOIN races ra ON r.raceId = ra.raceId
+GROUP BY c.constructorId
+ORDER BY total_races DESC
+```
+
+---
+
+## Relationships with Other Tables
+
+### Driver Relationships
+
+```
+drivers
+  ↓
+  ├─→ results (driverId)
+  ├─→ qualifying (driverId)
+  ├─→ sprint_results (driverId)
+  ├─→ lap_times (driverId)
+  ├─→ pit_stops (driverId)
+  └─→ driver_standings (driverId)
+```
+
+### Constructor Relationships
+
+```
+constructors
+  ↓
+  ├─→ results (constructorId)
+  ├─→ qualifying (constructorId)
+  ├─→ sprint_results (constructorId)
+  ├─→ constructor_results (constructorId)
+  └─→ constructor_standings (constructorId)
+```
+
+### Combined Query Example: Driver-Constructor Combinations
+
+```sql
+SELECT 
+    d.forename,
+    d.surname,
+    d.code,
+    c.name as constructor,
+    r.year,
+    COUNT(*) as races_together
+FROM results res
+JOIN drivers d ON res.driverId = d.driverId
+JOIN constructors c ON res.constructorId = c.constructorId
+JOIN races r ON res.raceId = r.raceId
+WHERE d.driverRef = 'hamilton'
+GROUP BY d.driverId, c.constructorId, r.year
+ORDER BY r.year
+```
+
+## Data Usage Tips
+
+<Note>
+**Full Names**: Combine `forename` and `surname` fields to get the driver's full name. Some applications also use `code` for compact displays.
+</Note>
+
+<Note>
+**Unique Identifiers**: Always use `driverId` and `constructorId` for joins. The `driverRef` and `constructorRef` fields are human-readable but not guaranteed to be immutable.
+</Note>
+
+<Note>
+**Missing Codes**: When working with historical data, handle `\N` values gracefully for `number` and `code` fields.
+</Note>

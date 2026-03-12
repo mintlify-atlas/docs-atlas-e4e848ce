@@ -1,0 +1,288 @@
+---
+title: 'Race-Related Tables'
+description: 'Detailed schemas for races, seasons, and circuits tables'
+---
+
+## Overview
+
+The race-related tables form the core structure of the dataset, defining when and where Formula 1 races occurred. These three tables work together to provide complete context for every Grand Prix event.
+
+## races.csv
+
+The main table containing individual race events, including session schedules and timing information.
+
+### Schema
+
+<ParamField path="raceId" type="integer" required>
+  Unique identifier for each race. Primary key.
+  
+  **Example**: `1061`
+</ParamField>
+
+<ParamField path="year" type="integer" required>
+  The year of the race. Links to `seasons.year`.
+  
+  **Example**: `2009`
+</ParamField>
+
+<ParamField path="round" type="integer" required>
+  The round number of the race in the season (1-based).
+  
+  **Example**: `1` (first race of the season)
+</ParamField>
+
+<ParamField path="circuitId" type="integer" required>
+  Foreign key to `circuits.csv`. Identifies which circuit hosted the race.
+  
+  **Example**: `1` (Albert Park)
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  The official name of the Grand Prix.
+  
+  **Example**: `"Australian Grand Prix"`
+</ParamField>
+
+<ParamField path="date" type="date" required>
+  The date of the race in YYYY-MM-DD format.
+  
+  **Example**: `"2009-03-29"`
+</ParamField>
+
+<ParamField path="time" type="time">
+  The time of the race start in HH:MM:SS format (UTC). May be `\N` for older races.
+  
+  **Example**: `"06:00:00"`
+</ParamField>
+
+<ParamField path="url" type="string">
+  Wikipedia URL for the race event.
+  
+  **Example**: `"http://en.wikipedia.org/wiki/2009_Australian_Grand_Prix"`
+</ParamField>
+
+<ParamField path="fp1_date" type="date">
+  Date of Free Practice 1 session. May be `\N` for older races.
+  
+  **Example**: `"2024-03-07"`
+</ParamField>
+
+<ParamField path="fp1_time" type="time">
+  Time of Free Practice 1 session (UTC). May be `\N` for older races.
+  
+  **Example**: `"11:30:00"`
+</ParamField>
+
+<ParamField path="fp2_date" type="date">
+  Date of Free Practice 2 session. May be `\N` for older races.
+</ParamField>
+
+<ParamField path="fp2_time" type="time">
+  Time of Free Practice 2 session (UTC). May be `\N` for older races.
+</ParamField>
+
+<ParamField path="fp3_date" type="date">
+  Date of Free Practice 3 session. May be `\N` for older races or sprint weekends.
+</ParamField>
+
+<ParamField path="fp3_time" type="time">
+  Time of Free Practice 3 session (UTC). May be `\N` for older races or sprint weekends.
+</ParamField>
+
+<ParamField path="quali_date" type="date">
+  Date of Qualifying session. May be `\N` for older races.
+</ParamField>
+
+<ParamField path="quali_time" type="time">
+  Time of Qualifying session (UTC). May be `\N` for older races.
+</ParamField>
+
+<ParamField path="sprint_date" type="date">
+  Date of Sprint Race. Only populated for races with sprint format (2021+).
+</ParamField>
+
+<ParamField path="sprint_time" type="time">
+  Time of Sprint Race (UTC). Only populated for races with sprint format (2021+).
+</ParamField>
+
+### Sample Data
+
+| raceId | year | round | circuitId | name | date | time |
+|--------|------|-------|-----------|------|------|------|
+| 1 | 2009 | 1 | 1 | Australian Grand Prix | 2009-03-29 | 06:00:00 |
+| 2 | 2009 | 2 | 2 | Malaysian Grand Prix | 2009-04-05 | 09:00:00 |
+| 3 | 2009 | 3 | 17 | Chinese Grand Prix | 2009-04-19 | 07:00:00 |
+
+<Note>
+**Session Data Availability**: Free practice and qualifying session dates/times are more complete for recent seasons (2015+). Older races may have `\N` values for these fields.
+</Note>
+
+---
+
+## circuits.csv
+
+Information about each circuit where Formula 1 races have been held, including geographic location.
+
+### Schema
+
+<ParamField path="circuitId" type="integer" required>
+  Unique identifier for each circuit. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="circuitRef" type="string" required>
+  Short reference name for the circuit (URL-friendly).
+  
+  **Example**: `"albert_park"`
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  Official name of the circuit.
+  
+  **Example**: `"Albert Park Grand Prix Circuit"`
+</ParamField>
+
+<ParamField path="location" type="string" required>
+  City or area where the circuit is located.
+  
+  **Example**: `"Melbourne"`
+</ParamField>
+
+<ParamField path="country" type="string" required>
+  Country where the circuit is located.
+  
+  **Example**: `"Australia"`
+</ParamField>
+
+<ParamField path="lat" type="float" required>
+  Latitude coordinate of the circuit.
+  
+  **Example**: `-37.8497`
+</ParamField>
+
+<ParamField path="lng" type="float" required>
+  Longitude coordinate of the circuit.
+  
+  **Example**: `144.968`
+</ParamField>
+
+<ParamField path="alt" type="integer">
+  Altitude of the circuit in meters above sea level.
+  
+  **Example**: `10`
+</ParamField>
+
+<ParamField path="url" type="string">
+  Wikipedia URL for the circuit.
+  
+  **Example**: `"http://en.wikipedia.org/wiki/Melbourne_Grand_Prix_Circuit"`
+</ParamField>
+
+### Sample Data
+
+| circuitId | circuitRef | name | location | country | lat | lng | alt |
+|-----------|------------|------|----------|---------|-----|-----|-----|
+| 1 | albert_park | Albert Park Grand Prix Circuit | Melbourne | Australia | -37.8497 | 144.968 | 10 |
+| 2 | sepang | Sepang International Circuit | Kuala Lumpur | Malaysia | 2.76083 | 101.738 | 18 |
+| 3 | bahrain | Bahrain International Circuit | Sakhir | Bahrain | 26.0325 | 50.5106 | 7 |
+
+<Note>
+**Coordinate Precision**: Latitude and longitude values are provided with high precision for mapping and visualization purposes.
+</Note>
+
+---
+
+## seasons.csv
+
+Simple metadata table for Formula 1 seasons.
+
+### Schema
+
+<ParamField path="year" type="integer" required>
+  The year of the Formula 1 season. Primary key.
+  
+  **Example**: `2009`
+</ParamField>
+
+<ParamField path="url" type="string">
+  Wikipedia URL for the season.
+  
+  **Example**: `"http://en.wikipedia.org/wiki/2009_Formula_One_season"`
+</ParamField>
+
+### Sample Data
+
+| year | url |
+|------|-----|
+| 2009 | http://en.wikipedia.org/wiki/2009_Formula_One_season |
+| 2008 | http://en.wikipedia.org/wiki/2008_Formula_One_season |
+| 2007 | http://en.wikipedia.org/wiki/2007_Formula_One_season |
+
+---
+
+## Relationships Between Tables
+
+```
+seasons (year)
+    ↓
+races (year) → circuits (circuitId)
+    ↓
+[Links to all performance tables]
+```
+
+### Key Relationships
+
+1. **seasons → races**: Each race belongs to a season via the `year` field
+2. **races → circuits**: Each race is held at a specific circuit via `circuitId`
+3. **races → results/qualifying/etc**: Each race has multiple performance records
+
+### Example Query: Get All Races at a Circuit
+
+```sql
+SELECT r.year, r.round, r.name, r.date, c.name as circuit_name
+FROM races r
+JOIN circuits c ON r.circuitId = c.circuitId
+WHERE c.circuitRef = 'monaco'
+ORDER BY r.year, r.round
+```
+
+### Example Query: Get Full Race Weekend Schedule
+
+```sql
+SELECT 
+    r.name,
+    r.date as race_date,
+    r.time as race_time,
+    r.fp1_date,
+    r.fp1_time,
+    r.fp2_date,
+    r.fp2_time,
+    r.fp3_date,
+    r.fp3_time,
+    r.quali_date,
+    r.quali_time,
+    r.sprint_date,
+    r.sprint_time,
+    c.name as circuit,
+    c.location,
+    c.country
+FROM races r
+JOIN circuits c ON r.circuitId = c.circuitId
+WHERE r.year = 2024
+ORDER BY r.round
+```
+
+## Data Usage Tips
+
+<Note>
+**Sprint Weekend Format**: On sprint weekends, FP3 is replaced by the Sprint Race. Check `sprint_date` to identify sprint weekends.
+</Note>
+
+<Note>
+**Historical Changes**: Circuit configurations and names have changed over time. The same `circuitId` may represent different layouts across different eras.
+</Note>
+
+<Note>
+**Time Zones**: All times are stored in UTC. Convert to local time using the circuit's `lat`/`lng` coordinates.
+</Note>

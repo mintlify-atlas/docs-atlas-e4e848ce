@@ -1,0 +1,105 @@
+---
+title: Drivers
+description: Reference documentation for the drivers.csv table
+---
+
+The `drivers.csv` table contains biographical information about all Formula 1 drivers who have participated in the championship.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `driverId` | integer | Unique identifier for each driver |
+| `driverRef` | string | Short reference name for the driver (URL-friendly) |
+| `number` | integer | Permanent race number (introduced in 2014) |
+| `code` | string | Three-letter driver code (e.g., HAM, VER, LEC) |
+| `forename` | string | Driver's first name |
+| `surname` | string | Driver's last name |
+| `dob` | date | Driver's date of birth (YYYY-MM-DD format) |
+| `nationality` | string | Driver's nationality |
+| `url` | string | Wikipedia URL for the driver |
+
+<Warning>
+The `number` and `code` fields contain `\N` for drivers who raced before these systems were introduced. Permanent numbers were introduced in 2014, and three-letter codes in 1996.
+</Warning>
+
+## Sample Data
+
+| driverId | driverRef | number | code | forename | surname | dob | nationality |
+|----------|-----------|--------|------|----------|---------|------------|-------------|
+| 1 | hamilton | 44 | HAM | Lewis | Hamilton | 1985-01-07 | British |
+| 2 | heidfeld | \N | HEI | Nick | Heidfeld | 1977-05-10 | German |
+| 3 | rosberg | 6 | ROS | Nico | Rosberg | 1985-06-27 | German |
+| 4 | alonso | 14 | ALO | Fernando | Alonso | 1981-07-29 | Spanish |
+
+## Relationships
+
+<Note>
+**Referenced by:**
+- `results.driverId` → `drivers.driverId`
+- `qualifying.driverId` → `drivers.driverId`
+- `sprint_results.driverId` → `drivers.driverId`
+- `driver_standings.driverId` → `drivers.driverId`
+- `lap_times.driverId` → `drivers.driverId`
+- `pit_stops.driverId` → `drivers.driverId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 865 drivers
+- **Date Range:** 1950 - Present
+- **Active Drivers:** Varies by season
+
+## Example Queries
+
+### Find drivers by nationality
+
+```python
+import pandas as pd
+
+drivers = pd.read_csv('drivers.csv')
+british_drivers = drivers[drivers['nationality'] == 'British']
+print(british_drivers[['forename', 'surname', 'dob']])
+```
+
+### Calculate driver ages
+
+```python
+from datetime import datetime
+
+drivers['dob'] = pd.to_datetime(drivers['dob'])
+drivers['age'] = (datetime.now() - drivers['dob']).dt.days // 365
+print(drivers[['forename', 'surname', 'age']].head())
+```
+
+### Find drivers with permanent numbers
+
+```python
+modern_drivers = drivers[drivers['number'] != '\\N']
+print(modern_drivers[['forename', 'surname', 'number', 'code']])
+```
+
+### Search for specific driver
+
+```python
+verstappen = drivers[drivers['surname'] == 'Verstappen']
+print(verstappen)
+```
+
+### Get youngest and oldest drivers
+
+```python
+drivers['dob'] = pd.to_datetime(drivers['dob'])
+youngest = drivers.nlargest(1, 'dob')
+oldest = drivers.nsmallest(1, 'dob')
+print(f"Youngest: {youngest['forename'].iloc[0]} {youngest['surname'].iloc[0]}")
+print(f"Oldest: {oldest['forename'].iloc[0]} {oldest['surname'].iloc[0]}")
+```
+
+## Notes
+
+- `\N` in the dataset represents null values (data not available)
+- Permanent driver numbers (e.g., 44 for Hamilton) were introduced in 2014
+- Three-letter codes were introduced in 1996
+- Some drivers have competed under different nationalities during their career
+- Date of birth is crucial for age-related statistics and historical analysis

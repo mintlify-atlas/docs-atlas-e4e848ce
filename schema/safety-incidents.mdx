@@ -1,0 +1,364 @@
+---
+title: 'Safety & Incidents'
+description: 'Detailed schemas for safety cars, red flags, and fatal accidents'
+---
+
+## Overview
+
+The safety and incidents tables document race interruptions, safety measures, and historical fatal accidents. These tables provide crucial context for understanding race conditions and the evolution of safety in Formula 1.
+
+## safety_cars.csv
+
+Records of safety car deployments during races.
+
+### Schema
+
+<ParamField path="Race" type="string" required>
+  Name of the Grand Prix (e.g., "1973 Canadian Grand Prix").
+  
+  **Example**: `"1973 Canadian Grand Prix"`
+</ParamField>
+
+<ParamField path="Cause" type="string" required>
+  Reason for safety car deployment.
+  
+  **Example**: `"Accident"`, `"Accident/Rain"`, `"Stranded car"`
+</ParamField>
+
+<ParamField path="Deployed" type="integer" required>
+  Lap number when safety car was deployed.
+  
+  **Example**: `33`
+</ParamField>
+
+<ParamField path="Retreated" type="float">
+  Lap number when safety car retreated (returned to pit lane). May be decimal if SC retreated mid-lap.
+  
+  **Example**: `39.0`
+</ParamField>
+
+<ParamField path="FullLaps" type="integer" required>
+  Number of full laps completed under safety car.
+  
+  **Example**: `5`
+</ParamField>
+
+### Sample Data
+
+| Race | Cause | Deployed | Retreated | FullLaps |
+|------|-------|----------|-----------|----------|
+| 1973 Canadian Grand Prix | Accident | 33 | 39.0 | 5 |
+| 1993 Brazilian Grand Prix | Accident/Rain | 29 | 38.0 | 8 |
+| 1993 British Grand Prix | Stranded car | 38 | 40.0 | 1 |
+| 1994 San Marino Grand Prix | Accident | 1 | 6.0 | 4 |
+
+### Historical Context
+
+<Note>
+**First Safety Car**: The safety car was first officially used in Formula 1 at the 1973 Canadian Grand Prix.
+</Note>
+
+<Note>
+**Modern Usage**: Safety car deployments have become more frequent in modern F1 as a tool for managing incidents safely.
+</Note>
+
+### Common Causes
+
+- **Accident** - Collision or crash requiring track cleanup
+- **Stranded car** - Disabled vehicle on or near racing line
+- **Weather** - Rain, fog, or other hazardous conditions
+- **Debris** - Track debris requiring removal
+- **Accident/Rain** - Combined incident and weather conditions
+
+---
+
+## red_flags.csv
+
+Records of red flag incidents (race stoppages).
+
+### Schema
+
+<ParamField path="Race" type="string" required>
+  Name of the Grand Prix.
+  
+  **Example**: `"1973 British Grand Prix"`
+</ParamField>
+
+<ParamField path="Lap" type="integer" required>
+  Lap number when red flag was shown.
+  
+  **Example**: `2`
+</ParamField>
+
+<ParamField path="Resumed" type="string" required>
+  Whether and how the race resumed:
+  - **Y** = Yes, race resumed
+  - **N** = No, race did not resume
+  - **R** = Race restarted from grid
+  - **S** = Race restarted from pit lane
+  
+  **Example**: `"Y"`
+</ParamField>
+
+<ParamField path="Incident" type="string" required>
+  Description of the incident that caused the red flag.
+  
+  **Example**: `"Crash involving Jody Scheckter..."`
+</ParamField>
+
+<ParamField path="Excluded" type="string">
+  List of drivers excluded from restart (crashed out or otherwise unable to continue).
+  
+  **Example**: `"Jody Scheckter, Jean-Pierre Beltoise..."`
+</ParamField>
+
+### Sample Data
+
+| Race | Lap | Resumed | Incident |
+|------|-----|---------|----------|
+| 1950 Indianapolis 500 | 138 | N | Rain. |
+| 1971 Canadian Grand Prix | 64 | N | Mist. |
+| 1973 British Grand Prix | 2 | Y | Crash involving Jody Scheckter... |
+| 1974 Brazilian Grand Prix | 32 | N | Rain. |
+
+### Historical Context
+
+<Note>
+**Early Red Flags**: Red flags were rare in early F1 history, primarily used for extreme weather or major incidents.
+</Note>
+
+<Note>
+**Modern Safety**: Modern F1 uses red flags more proactively to ensure driver safety during barrier repairs or multi-car incidents.
+</Note>
+
+<Note>
+**Race Results**: If a race is red-flagged and not resumed, results are typically taken from the last completed lap before the stoppage.
+</Note>
+
+---
+
+## virtual_safety_car_estimates.json
+
+Estimated virtual safety car (VSC) periods by race.
+
+### Schema
+
+This is a JSON file with the following structure:
+
+```json
+{
+  "[Race Name]": [lap_numbers],
+  "2015 Belgian Grand Prix": [20, 21],
+  "2015 British Grand Prix": [32, 33, 34]
+}
+```
+
+<ParamField path="Key" type="string" required>
+  Race name (Grand Prix).
+  
+  **Example**: `"2015 Belgian Grand Prix"`
+</ParamField>
+
+<ParamField path="Value" type="array" required>
+  Array of lap numbers when VSC was active.
+  
+  **Example**: `[20, 21]` (VSC on laps 20 and 21)
+</ParamField>
+
+### Sample Data
+
+```json
+{
+  "2015 Belgian Grand Prix": [20, 21],
+  "2015 British Grand Prix": [32, 33, 34],
+  "2015 Hungarian Grand Prix": [41, 42],
+  "2015 Monaco Grand Prix": [62, 63, 64]
+}
+```
+
+### Historical Context
+
+<Note>
+**VSC Introduction**: The Virtual Safety Car was introduced in 2015 as a safer alternative to yellow flags for incidents that don't require a full safety car.
+</Note>
+
+<Note>
+**Estimated Data**: These are estimates based on timing data and may not be 100% accurate. Official VSC data is not always publicly available.
+</Note>
+
+<Note>
+**Speed Delta**: Under VSC, drivers must maintain a target lap time (typically 30-40% slower than racing speed).
+</Note>
+
+---
+
+## fatal_accidents_drivers.csv
+
+Historical record of fatal accidents involving Formula 1 drivers.
+
+### Schema
+
+<ParamField path="Driver" type="string" required>
+  Name of the driver.
+  
+  **Example**: `"Ayrton Senna"`
+</ParamField>
+
+<ParamField path="Age" type="integer" required>
+  Age of the driver at time of accident.
+  
+  **Example**: `34`
+</ParamField>
+
+<ParamField path="Date Of Accident" type="string" required>
+  Date of the accident (M/D/YY format).
+  
+  **Example**: `"5/1/94"`
+</ParamField>
+
+<ParamField path="Event" type="string" required>
+  Name of the event where accident occurred.
+  
+  **Example**: `"1994 San Marino Grand Prix"`
+</ParamField>
+
+<ParamField path="Car" type="string" required>
+  Constructor/car the driver was in.
+  
+  **Example**: `"Williams"`
+</ParamField>
+
+<ParamField path="Session" type="string" required>
+  Session type (Practice, Qualifying, Race, Test).
+  
+  **Example**: `"Race"`
+</ParamField>
+
+### Sample Data
+
+| Driver | Age | Date Of Accident | Event | Car | Session |
+|--------|-----|------------------|-------|-----|----------|
+| Cameron Earl | 29 | 6/18/52 | N/A | ERA | Test |
+| Chet Miller | 50 | 5/15/53 | 1953 Indianapolis 500 | Kurtis Kraft | Practice |
+| Charles de Tornaco | 26 | 9/18/53 | 1953 Modena Grand Prix | Ferrari | Practice |
+| Onofre Marimón | 30 | 7/31/54 | 1954 German Grand Prix | Maserati | Practice |
+
+### Historical Context
+
+<Note>
+**Safety Evolution**: This dataset documents the tragic history of driver fatalities in F1, highlighting the importance of safety improvements over the decades.
+</Note>
+
+<Note>
+**Modern Safety**: The last driver fatality in an F1 race weekend was Jules Bianchi in 2014 (from injuries sustained in 2014 Japanese GP). No driver has died during an F1 session since 1994.
+</Note>
+
+<Note>
+**Respectful Use**: This data should be used respectfully when analyzing historical safety improvements and risks.
+</Note>
+
+---
+
+## fatal_accidents_marshalls.csv
+
+Historical record of fatal accidents involving race marshals.
+
+### Schema
+
+<ParamField path="Name" type="string" required>
+  Name of the marshal.
+  
+  **Example**: `"Paolo Gislimberti"`
+</ParamField>
+
+<ParamField path="Age" type="integer" required>
+  Age of the marshal at time of accident.
+  
+  **Example**: `33`
+</ParamField>
+
+<ParamField path="Date Of Accident" type="string" required>
+  Date of the accident (M/D/YY format).
+  
+  **Example**: `"9/10/00"`
+</ParamField>
+
+<ParamField path="Event" type="string" required>
+  Name of the event where accident occurred.
+  
+  **Example**: `"2000 Italian Grand Prix"`
+</ParamField>
+
+### Sample Data
+
+| Name | Age | Date Of Accident | Event |
+|------|-----|------------------|-------|
+| Günther Schneider | 19 | 8/4/63 | 1963 German Grand Prix |
+| Jansen van Vuuren | 19 | 3/5/77 | 1977 South African Grand Prix |
+| Paolo Gislimberti | 33 | 9/10/00 | 2000 Italian Grand Prix |
+| Graham Beveridge | 52 | 3/4/01 | 2001 Australian Grand Prix |
+
+### Historical Context
+
+<Note>
+**Marshal Safety**: These incidents led to major improvements in marshal safety, including better protective equipment, barriers, and protocols.
+</Note>
+
+<Note>
+**Volunteer Service**: Marshals are typically volunteers who play a crucial role in F1 safety. Their sacrifice has driven safety improvements for both track workers and drivers.
+</Note>
+
+---
+
+## Example Queries
+
+### Count Safety Car Deployments by Cause
+```sql
+SELECT Cause, COUNT(*) as count
+FROM safety_cars
+GROUP BY Cause
+ORDER BY count DESC
+```
+
+### Average Safety Car Duration
+```sql
+SELECT AVG(FullLaps) as avg_laps_under_sc
+FROM safety_cars
+```
+
+### Red Flag Races That Resumed
+```sql
+SELECT Race, Lap, Incident
+FROM red_flags
+WHERE Resumed = 'Y'
+ORDER BY Race
+```
+
+### VSC Usage by Season
+```javascript
+// Using the JSON data
+const vscData = require('./virtual_safety_car_estimates.json');
+const racesByYear = {};
+
+Object.keys(vscData).forEach(race => {
+  const year = race.match(/\d{4}/)[0];
+  if (!racesByYear[year]) racesByYear[year] = 0;
+  racesByYear[year]++;
+});
+
+console.log(racesByYear);
+```
+
+## Data Usage Tips
+
+<Note>
+**Race Name Matching**: Safety and incident tables use race names (strings) rather than `raceId`. You may need to join via race name matching or manual mapping.
+</Note>
+
+<Note>
+**Incomplete Coverage**: Not all safety car deployments may be recorded, especially for historical races. Coverage improves significantly from the 2000s onward.
+</Note>
+
+<Note>
+**Sensitive Data**: The fatal accident tables contain sensitive historical information. Use this data thoughtfully and respectfully in analyses.
+</Note>

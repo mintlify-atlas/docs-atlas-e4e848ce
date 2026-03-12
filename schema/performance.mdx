@@ -1,0 +1,512 @@
+---
+title: 'Performance Data'
+description: 'Detailed schemas for results, qualifying, sprint races, lap times, pit stops, and status tables'
+---
+
+## Overview
+
+Performance tables capture the on-track action, including race results, qualifying times, lap-by-lap data, and pit stop information. These tables form the core analytical dataset for Formula 1 performance analysis.
+
+## results.csv
+
+The primary table containing race results, finishing positions, and performance statistics for each driver in each race.
+
+### Schema
+
+<ParamField path="resultId" type="integer" required>
+  Unique identifier for each result. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`.
+  
+  **Example**: `18`
+</ParamField>
+
+<ParamField path="driverId" type="integer" required>
+  Foreign key to `drivers.csv`.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="constructorId" type="integer" required>
+  Foreign key to `constructors.csv`.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="number" type="integer">
+  Driver's car number for this race. May be `\N` for older races.
+  
+  **Example**: `44`
+</ParamField>
+
+<ParamField path="grid" type="integer" required>
+  Starting grid position (1 = pole position, 0 = pitlane start).
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="position" type="integer">
+  Finishing position. May be `\N` if driver did not finish.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="positionText" type="string" required>
+  Text representation of position. May be "R" (retired), "D" (disqualified), "E" (excluded), "W" (withdrawn), "F" (failed to qualify), "N" (not classified), or a number.
+  
+  **Example**: `"1"` or `"R"`
+</ParamField>
+
+<ParamField path="positionOrder" type="integer" required>
+  Order of finish for sorting purposes. Finishers come before non-finishers.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="points" type="float" required>
+  Championship points scored in this race.
+  
+  **Example**: `10.0`
+</ParamField>
+
+<ParamField path="laps" type="integer" required>
+  Number of laps completed.
+  
+  **Example**: `58`
+</ParamField>
+
+<ParamField path="time" type="string">
+  Total race time for winner, or gap to winner (e.g., "+5.478"). May be `\N` for DNF.
+  
+  **Example**: `"1:34:50.616"` or `"+5.478"`
+</ParamField>
+
+<ParamField path="milliseconds" type="integer">
+  Total race time in milliseconds. May be `\N` for DNF.
+  
+  **Example**: `5690616`
+</ParamField>
+
+<ParamField path="fastestLap" type="integer">
+  Lap number of driver's fastest lap. May be `\N`.
+  
+  **Example**: `39`
+</ParamField>
+
+<ParamField path="rank" type="integer">
+  Rank of this driver's fastest lap compared to all drivers (1 = fastest). May be `\N`.
+  
+  **Example**: `2`
+</ParamField>
+
+<ParamField path="fastestLapTime" type="string">
+  Time of the fastest lap in M:SS.mmm format. May be `\N`.
+  
+  **Example**: `"1:27.452"`
+</ParamField>
+
+<ParamField path="fastestLapSpeed" type="float">
+  Speed of fastest lap in km/h. May be `\N`.
+  
+  **Example**: `218.3`
+</ParamField>
+
+<ParamField path="statusId" type="integer" required>
+  Foreign key to `status.csv` indicating finish status.
+  
+  **Example**: `1` (Finished)
+</ParamField>
+
+### Sample Data
+
+| resultId | raceId | driverId | constructorId | grid | position | points | laps | time | fastestLapTime |
+|----------|--------|----------|---------------|------|----------|--------|------|------|----------------|
+| 1 | 18 | 1 | 1 | 1 | 1 | 10 | 58 | 1:34:50.616 | 1:27.452 |
+| 2 | 18 | 2 | 2 | 5 | 2 | 8 | 58 | +5.478 | 1:27.739 |
+| 3 | 18 | 3 | 3 | 7 | 3 | 6 | 58 | +8.163 | 1:28.090 |
+
+<Note>
+**Time Format**: The `time` field shows absolute time for P1 and relative time (gap) for all other finishers. DNF entries have `\N`.
+</Note>
+
+---
+
+## qualifying.csv
+
+Qualifying session results with Q1, Q2, and Q3 times.
+
+### Schema
+
+<ParamField path="qualifyId" type="integer" required>
+  Unique identifier for each qualifying result. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`.
+  
+  **Example**: `18`
+</ParamField>
+
+<ParamField path="driverId" type="integer" required>
+  Foreign key to `drivers.csv`.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="constructorId" type="integer" required>
+  Foreign key to `constructors.csv`.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="number" type="integer" required>
+  Driver's car number.
+  
+  **Example**: `44`
+</ParamField>
+
+<ParamField path="position" type="integer" required>
+  Final qualifying position.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="q1" type="string">
+  Q1 lap time in M:SS.mmm format. May be `\N` if driver didn't participate.
+  
+  **Example**: `"1:26.572"`
+</ParamField>
+
+<ParamField path="q2" type="string">
+  Q2 lap time. May be `\N` if driver didn't advance to Q2.
+  
+  **Example**: `"1:25.187"`
+</ParamField>
+
+<ParamField path="q3" type="string">
+  Q3 lap time. May be `\N` if driver didn't advance to Q3.
+  
+  **Example**: `"1:26.714"`
+</ParamField>
+
+### Sample Data
+
+| qualifyId | raceId | driverId | position | q1 | q2 | q3 |
+|-----------|--------|----------|----------|-----|-----|-----|
+| 1 | 18 | 1 | 1 | 1:26.572 | 1:25.187 | 1:26.714 |
+| 2 | 18 | 9 | 2 | 1:26.103 | 1:25.315 | 1:26.869 |
+| 3 | 18 | 5 | 3 | 1:25.664 | 1:25.452 | 1:27.079 |
+
+<Note>
+**Qualifying Format**: Drivers eliminated in Q1 have only `q1` populated. Top 15 have `q1` and `q2`. Top 10 have all three sessions.
+</Note>
+
+---
+
+## sprint_results.csv
+
+Results from sprint races (introduced in 2021).
+
+### Schema
+
+<ParamField path="resultId" type="integer" required>
+  Unique identifier for each sprint result. Primary key.
+</ParamField>
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`.
+</ParamField>
+
+<ParamField path="driverId" type="integer" required>
+  Foreign key to `drivers.csv`.
+</ParamField>
+
+<ParamField path="constructorId" type="integer" required>
+  Foreign key to `constructors.csv`.
+</ParamField>
+
+<ParamField path="number" type="integer" required>
+  Driver's car number.
+</ParamField>
+
+<ParamField path="grid" type="integer" required>
+  Starting grid position for sprint.
+</ParamField>
+
+<ParamField path="position" type="integer">
+  Finishing position. May be `\N` for DNF.
+</ParamField>
+
+<ParamField path="positionText" type="string" required>
+  Text representation of position.
+</ParamField>
+
+<ParamField path="positionOrder" type="integer" required>
+  Order of finish for sorting.
+</ParamField>
+
+<ParamField path="points" type="float" required>
+  Points scored in sprint race.
+  
+  **Example**: `3.0` (P1 in sprint)
+</ParamField>
+
+<ParamField path="laps" type="integer" required>
+  Number of laps completed in sprint.
+</ParamField>
+
+<ParamField path="time" type="string">
+  Sprint race time or gap.
+</ParamField>
+
+<ParamField path="milliseconds" type="integer">
+  Time in milliseconds.
+</ParamField>
+
+<ParamField path="fastestLap" type="integer">
+  Lap number of fastest lap.
+</ParamField>
+
+<ParamField path="fastestLapTime" type="string">
+  Fastest lap time.
+</ParamField>
+
+<ParamField path="statusId" type="integer" required>
+  Foreign key to `status.csv`.
+</ParamField>
+
+<ParamField path="rank" type="integer">
+  Rank of fastest lap.
+</ParamField>
+
+### Sample Data
+
+| resultId | raceId | driverId | grid | position | points | laps | time |
+|----------|--------|----------|------|----------|--------|------|------|
+| 1 | 1061 | 830 | 2 | 1 | 3 | 17 | 25:38.426 |
+| 2 | 1061 | 1 | 1 | 2 | 2 | 17 | +1.430 |
+
+<Note>
+**Sprint Points**: Sprint races award fewer points than main races. The points system has changed over the years (2021: top 3, 2022+: top 8).
+</Note>
+
+---
+
+## lap_times.csv
+
+Individual lap times for every driver in every lap of a race.
+
+### Schema
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`. Part of composite primary key.
+</ParamField>
+
+<ParamField path="driverId" type="integer" required>
+  Foreign key to `drivers.csv`. Part of composite primary key.
+</ParamField>
+
+<ParamField path="lap" type="integer" required>
+  Lap number. Part of composite primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="position" type="integer" required>
+  Driver's position at the end of this lap.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="time" type="string" required>
+  Lap time in M:SS.mmm format.
+  
+  **Example**: `"1:32.713"`
+</ParamField>
+
+<ParamField path="milliseconds" type="integer" required>
+  Lap time in milliseconds.
+  
+  **Example**: `92713`
+</ParamField>
+
+### Sample Data
+
+| raceId | driverId | lap | position | time | milliseconds |
+|--------|----------|-----|----------|------|-------------|
+| 841 | 20 | 1 | 1 | 1:38.109 | 98109 |
+| 841 | 20 | 2 | 1 | 1:33.006 | 93006 |
+| 841 | 20 | 3 | 1 | 1:32.713 | 92713 |
+
+<Note>
+**Data Availability**: Lap time data is generally available from 1996 onwards. Earlier races may not have lap-by-lap data.
+</Note>
+
+<Note>
+**First Lap Times**: Lap 1 times are typically slower due to the standing start and include the run from grid to timing line.
+</Note>
+
+---
+
+## pit_stops.csv
+
+Detailed pit stop information including duration and timing.
+
+### Schema
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`. Part of composite primary key.
+</ParamField>
+
+<ParamField path="driverId" type="integer" required>
+  Foreign key to `drivers.csv`. Part of composite primary key.
+</ParamField>
+
+<ParamField path="stop" type="integer" required>
+  Pit stop number for this driver in this race. Part of composite primary key.
+  
+  **Example**: `1` (first stop)
+</ParamField>
+
+<ParamField path="lap" type="integer" required>
+  Lap number when pit stop occurred.
+  
+  **Example**: `18`
+</ParamField>
+
+<ParamField path="time" type="string" required>
+  Time of day when pit stop occurred (HH:MM:SS).
+  
+  **Example**: `"14:22:35"`
+</ParamField>
+
+<ParamField path="duration" type="string" required>
+  Duration of pit stop in seconds.
+  
+  **Example**: `"28.482"`
+</ParamField>
+
+<ParamField path="milliseconds" type="integer" required>
+  Duration of pit stop in milliseconds.
+  
+  **Example**: `28482`
+</ParamField>
+
+### Sample Data
+
+| raceId | driverId | stop | lap | time | duration | milliseconds |
+|--------|----------|------|-----|------|----------|-------------|
+| 258 | 100 | 1 | 1 | 14:01:34 | 49.111 | 49111 |
+| 258 | 79 | 1 | 17 | 14:20:46 | 28.482 | 28482 |
+| 258 | 57 | 1 | 18 | 14:22:35 | 43.745 | 43745 |
+
+<Note>
+**Data Availability**: Comprehensive pit stop data is generally available from 2011 onwards.
+</Note>
+
+<Note>
+**Duration Measurement**: Duration measures time from pit entry to exit, including time in pit box and pit lane.
+</Note>
+
+---
+
+## status.csv
+
+Lookup table for race finishing status codes.
+
+### Schema
+
+<ParamField path="statusId" type="integer" required>
+  Unique status identifier. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="status" type="string" required>
+  Description of the status.
+  
+  **Example**: `"Finished"` or `"Engine"`
+</ParamField>
+
+### Sample Data
+
+| statusId | status |
+|----------|--------|
+| 1 | Finished |
+| 2 | Disqualified |
+| 3 | Accident |
+| 4 | Collision |
+| 5 | Engine |
+| 6 | Gearbox |
+| 7 | Transmission |
+| 8 | Clutch |
+| 9 | Hydraulics |
+
+### Common Status Codes
+
+- **1** - Finished (completed the race)
+- **2** - Disqualified
+- **3** - Accident
+- **4** - Collision
+- **5** - Engine (engine failure)
+- **6** - Gearbox (gearbox failure)
+- **11** - +1 Lap (finished but 1 lap down)
+- **12** - +2 Laps
+- **13** - +3 Laps
+
+---
+
+## Example Queries
+
+### Race Winner with Full Details
+```sql
+SELECT 
+    d.forename || ' ' || d.surname as driver,
+    c.name as constructor,
+    res.grid,
+    res.laps,
+    res.time,
+    res.fastestLapTime,
+    res.points
+FROM results res
+JOIN drivers d ON res.driverId = d.driverId
+JOIN constructors c ON res.constructorId = c.constructorId
+WHERE res.raceId = 1061 AND res.position = 1
+```
+
+### Fastest Pit Stop in a Race
+```sql
+SELECT 
+    d.code,
+    c.name as team,
+    ps.stop,
+    ps.lap,
+    ps.duration
+FROM pit_stops ps
+JOIN drivers d ON ps.driverId = d.driverId
+JOIN results r ON ps.driverId = r.driverId AND ps.raceId = r.raceId
+JOIN constructors c ON r.constructorId = c.constructorId
+WHERE ps.raceId = 258
+ORDER BY ps.milliseconds
+LIMIT 1
+```
+
+### Qualifying Progression
+```sql
+SELECT 
+    d.code,
+    q.position,
+    q.q1,
+    q.q2,
+    q.q3
+FROM qualifying q
+JOIN drivers d ON q.driverId = d.driverId
+WHERE q.raceId = 18
+ORDER BY q.position
+```

@@ -1,0 +1,125 @@
+---
+title: Races
+description: Reference documentation for the races.csv table
+---
+
+The `races.csv` table contains information about every Formula 1 race, including Grand Prix events and session schedules.
+
+## Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `raceId` | integer | Unique identifier for each race |
+| `year` | integer | Season year |
+| `round` | integer | Round number within the season |
+| `circuitId` | integer | Foreign key to circuits.csv |
+| `name` | string | Name of the Grand Prix |
+| `date` | date | Date of the race (YYYY-MM-DD) |
+| `time` | time | Race start time (UTC) |
+| `url` | string | Wikipedia URL for the race |
+| `fp1_date` | date | Free Practice 1 date |
+| `fp1_time` | time | Free Practice 1 start time (UTC) |
+| `fp2_date` | date | Free Practice 2 date |
+| `fp2_time` | time | Free Practice 2 start time (UTC) |
+| `fp3_date` | date | Free Practice 3 date |
+| `fp3_time` | time | Free Practice 3 start time (UTC) |
+| `quali_date` | date | Qualifying session date |
+| `quali_time` | time | Qualifying session start time (UTC) |
+| `sprint_date` | date | Sprint race date (if applicable) |
+| `sprint_time` | time | Sprint race start time (UTC) |
+
+<Warning>
+Practice session times (`fp1_*`, `fp2_*`, `fp3_*`) and qualifying times are `\N` for historical races where this data wasn't recorded. Sprint fields are `\N` for races without sprint format.
+</Warning>
+
+## Sample Data
+
+| raceId | year | round | circuitId | name | date | time |
+|--------|------|-------|-----------|------|------|------|
+| 1 | 2009 | 1 | 1 | Australian Grand Prix | 2009-03-29 | 06:00:00 |
+| 2 | 2009 | 2 | 2 | Malaysian Grand Prix | 2009-04-05 | 09:00:00 |
+| 3 | 2009 | 3 | 17 | Chinese Grand Prix | 2009-04-19 | 07:00:00 |
+| 4 | 2009 | 4 | 3 | Bahrain Grand Prix | 2009-04-26 | 12:00:00 |
+
+## Relationships
+
+<Note>
+**References:**
+- `races.circuitId` → `circuits.circuitId`
+
+**Referenced by:**
+- `results.raceId` → `races.raceId`
+- `qualifying.raceId` → `races.raceId`
+- `sprint_results.raceId` → `races.raceId`
+- `lap_times.raceId` → `races.raceId`
+- `pit_stops.raceId` → `races.raceId`
+- `driver_standings.raceId` → `races.raceId`
+- `constructor_standings.raceId` → `races.raceId`
+</Note>
+
+## Dataset Statistics
+
+- **Total Records:** 1,173 races
+- **Date Range:** 1950 - Present
+- **Races per Season:** Varies (typically 15-24)
+
+## Example Queries
+
+### Get races for a specific season
+
+```python
+import pandas as pd
+
+races = pd.read_csv('races.csv')
+season_2023 = races[races['year'] == 2023]
+print(season_2023[['round', 'name', 'date']])
+```
+
+### Find all races at a specific circuit
+
+```python
+# Monaco (circuitId = 6)
+monaco_races = races[races['circuitId'] == 6]
+print(monaco_races[['year', 'date', 'name']])
+```
+
+### Count races by year
+
+```python
+races_per_year = races.groupby('year').size()
+print(races_per_year)
+```
+
+### Find sprint race weekends
+
+```python
+sprint_races = races[races['sprint_date'].notna()]
+print(sprint_races[['year', 'name', 'sprint_date']])
+```
+
+### Get upcoming races (if dataset is current)
+
+```python
+from datetime import datetime
+
+races['date'] = pd.to_datetime(races['date'])
+upcoming = races[races['date'] > datetime.now()]
+print(upcoming[['name', 'date', 'time']].head())
+```
+
+### Join with circuits for location data
+
+```python
+circuits = pd.read_csv('circuits.csv')
+races_with_location = races.merge(circuits, on='circuitId')
+print(races_with_location[['year', 'name', 'location', 'country']])
+```
+
+## Notes
+
+- All times are stored in UTC format
+- `\N` represents null values for missing data
+- The sprint race format was introduced in 2021, so earlier races have `\N` for sprint fields
+- Practice session data is more complete for recent seasons
+- The `round` field resets to 1 each season
+- Some races may have been cancelled or rescheduled (check results table for actual participation)

@@ -1,0 +1,489 @@
+---
+title: 'Data Analysis Guide'
+description: 'Comprehensive guide to analyzing Formula 1 data with pandas, polars, and other Python tools'
+icon: 'chart-line'
+---
+
+# Data Analysis Guide
+
+This guide demonstrates how to load and analyze the RaceData Formula 1 dataset using popular Python libraries. We'll cover common analysis patterns, joining tables, and real-world examples.
+
+## Loading Data
+
+### With Pandas
+
+Pandas is the most popular data analysis library for Python and works well for most F1 data analysis tasks.
+
+<CodeGroup>
+
+```python pandas - Basic Loading
+import pandas as pd
+
+# Load individual tables
+drivers = pd.read_csv('data/drivers.csv')
+races = pd.read_csv('data/races.csv')
+results = pd.read_csv('data/results.csv')
+lap_times = pd.read_csv('data/lap_times.csv')
+
+# View basic info
+print(f"Total drivers: {len(drivers)}")
+print(f"Total races: {len(races)}")
+print(f"Date range: {races['date'].min()} to {races['date'].max()}")
+```
+
+```python pandas - Optimized Loading
+import pandas as pd
+
+# Optimize memory usage with dtypes
+dtypes = {
+    'driverId': 'int16',
+    'raceId': 'int16',
+    'constructorId': 'int16',
+    'position': 'float32',
+    'points': 'float32'
+}
+
+results = pd.read_csv(
+    'data/results.csv',
+    dtype=dtypes,
+    parse_dates=['date'] if 'date' in results.columns else None
+)
+
+# For large files like lap_times (600K+ rows), use chunking
+chunks = []
+for chunk in pd.read_csv('data/lap_times.csv', chunksize=50000):
+    # Process each chunk
+    filtered = chunk[chunk['milliseconds'] < 100000]
+    chunks.append(filtered)
+
+lap_times = pd.concat(chunks, ignore_index=True)
+```
+
+</CodeGroup>
+
+### With Polars
+
+Polars is a faster alternative to pandas, especially for large datasets. It's written in Rust and uses Apache Arrow.
+
+<CodeGroup>
+
+```python polars - Basic Loading
+import polars as pl
+
+# Load with polars (faster than pandas)
+drivers = pl.read_csv('data/drivers.csv')
+races = pl.read_csv('data/races.csv')
+results = pl.read_csv('data/results.csv')
+lap_times = pl.read_csv('data/lap_times.csv')
+
+# Polars is lazy by default for better performance
+lazy_lap_times = pl.scan_csv('data/lap_times.csv')
+
+# Execute queries only when needed
+fast_laps = (
+    lazy_lap_times
+    .filter(pl.col('milliseconds') < 90000)
+    .collect()
+)
+
+print(f"Fast laps: {len(fast_laps)}")
+```
+
+```python polars - Advanced Loading
+import polars as pl
+
+# Load multiple files with schema optimization
+schema_overrides = {
+    'driverId': pl.Int32,
+    'raceId': pl.Int32,
+    'milliseconds': pl.Int64,
+    'position': pl.Int8
+}
+
+lap_times = pl.read_csv(
+    'data/lap_times.csv',
+    schema_overrides=schema_overrides,
+    try_parse_dates=True
+)
+
+# Lazy loading for complex queries
+result = (
+    pl.scan_csv('data/results.csv')
+    .join(
+        pl.scan_csv('data/drivers.csv'),
+        on='driverId',
+        how='left'
+    )
+    .select(['forename', 'surname', 'points'])
+    .collect()
+)
+```
+
+</CodeGroup>
+
+<Tip>
+For datasets with 600K+ rows like `lap_times.csv`, polars can be 5-10x faster than pandas. Consider using polars for large-scale analysis or when performance is critical.
+</Tip>
+
+## Common Analysis Patterns
+
+### Driver Performance Analysis
+
+Analyze a driver's performance over their career:
+
+```python
+import pandas as pd
+import numpy as np
+
+# Load required tables
+drivers = pd.read_csv('data/drivers.csv')
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Analyze Lewis Hamilton's career
+hamilton = drivers[drivers['driverRef'] == 'hamilton'].iloc[0]
+hamilton_results = results[results['driverId'] == hamilton['driverId']]
+
+# Merge with race information
+hamilton_races = hamilton_results.merge(
+    races[['raceId', 'year', 'name', 'date']], 
+    on='raceId'
+)
+
+# Calculate statistics
+stats = {
+    'total_races': len(hamilton_races),
+    'wins': len(hamilton_races[hamilton_races['position'] == 1]),
+    'podiums': len(hamilton_races[hamilton_races['position'] <= 3]),
+    'total_points': hamilton_races['points'].sum(),
+    'avg_finish': hamilton_races['positionOrder'].mean(),
+    'dnf_rate': len(hamilton_races[hamilton_races['positionText'] == 'R']) / len(hamilton_races)
+}
+
+print(f"Lewis Hamilton Career Stats:")
+for key, value in stats.items():
+    print(f"  {key}: {value:.2f}" if isinstance(value, float) else f"  {key}: {value}")
+
+# Group by year
+yearly_performance = hamilton_races.groupby('year').agg({
+    'points': 'sum',
+    'position': lambda x: (x == 1).sum(),  # wins
+    'raceId': 'count'  # races
+}).rename(columns={'position': 'wins', 'raceId': 'races'})
+
+print("\nYearly Performance:")
+print(yearly_performance.tail())
+```
+
+**Expected Output:**
+```
+Lewis Hamilton Career Stats:
+  total_races: 344
+  wins: 103
+  podiums: 197
+  total_points: 4539.50
+  avg_finish: 4.12
+  dnf_rate: 0.09
+
+Yearly Performance:
+      points  wins  races
+year                     
+2020   347.0    11     17
+2021   387.5    10     22
+2022   240.0     1     22
+2023   234.0     0     22
+2024   223.0     2     24
+```
+
+### Constructor Trends Over Time
+
+Analyze how constructor performance has evolved:
+
+```python
+import pandas as pd
+import numpy as np
+
+# Load data
+constructors = pd.read_csv('data/constructors.csv')
+constructor_standings = pd.read_csv('data/constructor_standings.csv')
+races = pd.read_csv('data/races.csv')
+
+# Get Ferrari's historical performance
+ferrari = constructors[constructors['constructorRef'] == 'ferrari'].iloc[0]
+ferrari_standings = constructor_standings[
+    constructor_standings['constructorId'] == ferrari['constructorId']
+]
+
+# Merge with race data to get years
+ferrari_history = ferrari_standings.merge(
+    races[['raceId', 'year', 'round']], 
+    on='raceId'
+)
+
+# Get final standings per year (last race of season)
+final_standings = (
+    ferrari_history
+    .sort_values(['year', 'round'])
+    .groupby('year')
+    .last()
+    .reset_index()
+)
+
+# Calculate decade averages
+final_standings['decade'] = (final_standings['year'] // 10) * 10
+decade_performance = final_standings.groupby('decade').agg({
+    'position': 'mean',
+    'points': 'mean',
+    'wins': 'mean'
+}).round(2)
+
+print("Ferrari Performance by Decade:")
+print(decade_performance)
+```
+
+### Head-to-Head Teammate Comparisons
+
+Compare teammates across a season:
+
+```python
+import pandas as pd
+
+# Load data
+drivers = pd.read_csv('data/drivers.csv')
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Compare teammates in 2024
+year = 2024
+races_2024 = races[races['year'] == year]
+results_2024 = results[results['raceId'].isin(races_2024['raceId'])]
+
+# Get both drivers from same constructor
+teammate_pairs = (
+    results_2024
+    .groupby(['raceId', 'constructorId'])['driverId']
+    .apply(list)
+    .reset_index()
+)
+
+# Filter to pairs (both drivers finished)
+teammate_pairs = teammate_pairs[teammate_pairs['driverId'].apply(len) == 2]
+
+# For each pair, compare positions
+comparisons = []
+for _, row in teammate_pairs.iterrows():
+    race_results = results_2024[
+        (results_2024['raceId'] == row['raceId']) & 
+        (results_2024['driverId'].isin(row['driverId']))
+    ]
+    
+    if len(race_results) == 2:
+        r1, r2 = race_results.iloc[0], race_results.iloc[1]
+        comparisons.append({
+            'raceId': row['raceId'],
+            'constructorId': row['constructorId'],
+            'driver1_id': r1['driverId'],
+            'driver1_pos': r1['positionOrder'],
+            'driver2_id': r2['driverId'],
+            'driver2_pos': r2['positionOrder'],
+            'driver1_beat_driver2': r1['positionOrder'] < r2['positionOrder']
+        })
+
+comparison_df = pd.DataFrame(comparisons)
+
+# Calculate head-to-head records
+for constructor_id in comparison_df['constructorId'].unique():
+    constructor_data = comparison_df[comparison_df['constructorId'] == constructor_id]
+    d1_id = constructor_data.iloc[0]['driver1_id']
+    d2_id = constructor_data.iloc[0]['driver2_id']
+    
+    d1_wins = constructor_data['driver1_beat_driver2'].sum()
+    d2_wins = len(constructor_data) - d1_wins
+    
+    d1_name = drivers[drivers['driverId'] == d1_id].iloc[0]
+    d2_name = drivers[drivers['driverId'] == d2_id].iloc[0]
+    
+    print(f"{d1_name['forename']} {d1_name['surname']}: {d1_wins}")
+    print(f"{d2_name['forename']} {d2_name['surname']}: {d2_wins}")
+    print()
+```
+
+## Joining Tables for Complex Queries
+
+### Multi-Table Join Example
+
+Combine multiple tables to answer: "Which drivers have won at Monaco?"
+
+```python
+import pandas as pd
+
+# Load tables
+drivers = pd.read_csv('data/drivers.csv')
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+circuits = pd.read_csv('data/circuits.csv')
+
+# Find Monaco circuit
+monaco = circuits[circuits['name'] == 'Circuit de Monaco']
+
+# Chain joins
+monaco_winners = (
+    results[results['position'] == 1]  # Only winners
+    .merge(races, on='raceId')  # Get race info
+    .merge(circuits, on='circuitId')  # Get circuit info
+    .query('name == "Circuit de Monaco"')  # Filter Monaco
+    .merge(drivers, on='driverId')  # Get driver info
+    [['year', 'forename', 'surname', 'name_y']]  # Select columns
+    .rename(columns={'name_y': 'race_name'})
+    .sort_values('year', ascending=False)
+)
+
+print("Monaco Grand Prix Winners:")
+print(monaco_winners.head(10))
+
+# Count wins per driver
+wins_per_driver = (
+    monaco_winners
+    .groupby(['forename', 'surname'])
+    .size()
+    .reset_index(name='wins')
+    .sort_values('wins', ascending=False)
+)
+
+print("\nMost Monaco Wins:")
+print(wins_per_driver.head())
+```
+
+### Lap Time Analysis with Joins
+
+Analyze fastest laps with driver and race context:
+
+```python
+import pandas as pd
+
+# Load data
+lap_times = pd.read_csv('data/lap_times.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+circuits = pd.read_csv('data/circuits.csv')
+
+# Find fastest lap ever at each circuit
+fastest_laps = (
+    lap_times
+    .sort_values('milliseconds')
+    .groupby('raceId')
+    .first()
+    .reset_index()
+    .merge(races, on='raceId')
+    .merge(circuits, on='circuitId')
+    .merge(drivers, on='driverId')
+)
+
+# Get fastest lap per circuit
+circuit_records = (
+    fastest_laps
+    .sort_values('milliseconds')
+    .groupby('circuitRef')
+    .first()
+    .reset_index()
+    [['circuitRef', 'forename', 'surname', 'year', 'time', 'milliseconds']]
+)
+
+print("Circuit Lap Records:")
+print(circuit_records.head(10))
+```
+
+<Tip>
+When joining large tables like `lap_times.csv`, filter the data first before joining to improve performance. For example, filter to a specific year or race before merging with other tables.
+</Tip>
+
+## Performance Optimization Tips
+
+### Memory Management
+
+```python
+import pandas as pd
+
+# Check memory usage before optimization
+lap_times = pd.read_csv('data/lap_times.csv')
+print(f"Memory usage: {lap_times.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+
+# Optimize dtypes
+lap_times_optimized = pd.read_csv(
+    'data/lap_times.csv',
+    dtype={
+        'raceId': 'int16',
+        'driverId': 'int16',
+        'lap': 'int8',
+        'position': 'int8',
+        'milliseconds': 'int32'
+    }
+)
+
+print(f"Optimized memory: {lap_times_optimized.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+
+# Use categorical for repeated string values
+drivers = pd.read_csv('data/drivers.csv')
+drivers['nationality'] = drivers['nationality'].astype('category')
+```
+
+### Efficient Filtering
+
+```python
+import pandas as pd
+
+# Bad: Load everything then filter
+results = pd.read_csv('data/results.csv')
+results_2023 = results[results['raceId'] > 1100]
+
+# Better: Filter during load if possible
+races = pd.read_csv('data/races.csv')
+race_ids_2023 = races[races['year'] == 2023]['raceId'].tolist()
+
+# Then load only relevant results
+all_results = pd.read_csv('data/results.csv')
+results_2023 = all_results[all_results['raceId'].isin(race_ids_2023)]
+
+# Best: Use SQL or polars for complex filtering
+import polars as pl
+
+results_2023 = (
+    pl.scan_csv('data/results.csv')
+    .join(pl.scan_csv('data/races.csv'), on='raceId')
+    .filter(pl.col('year') == 2023)
+    .collect()
+)
+```
+
+### Vectorized Operations
+
+```python
+import pandas as pd
+import numpy as np
+
+results = pd.read_csv('data/results.csv')
+
+# Bad: Loop through rows
+point_differences = []
+for i in range(len(results)):
+    if results.iloc[i]['position'] == 1:
+        point_differences.append(results.iloc[i]['points'] - 25)
+    else:
+        point_differences.append(0)
+
+# Good: Vectorized operation
+results['point_diff'] = np.where(
+    results['position'] == 1,
+    results['points'] - 25,
+    0
+)
+
+# Even better: Use pandas methods
+results['is_winner'] = (results['position'] == 1).astype(int)
+```
+
+## Next Steps
+
+- Learn how to [query the data](/guides/querying) with SQL and pandas
+- Create [visualizations](/guides/visualization) from your analysis
+- Integrate with [external tools](/guides/integrations) for advanced workflows

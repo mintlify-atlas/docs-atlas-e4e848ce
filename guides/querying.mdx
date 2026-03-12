@@ -1,0 +1,526 @@
+---
+title: 'Querying Data'
+description: 'SQL, pandas, and filtering techniques for the F1 dataset'
+icon: 'database'
+---
+
+# Querying the Data
+
+This guide shows you how to query the Formula 1 dataset using SQL, pandas, and efficient filtering patterns. Learn how to extract insights from 70+ years of F1 history.
+
+## SQL Queries
+
+### Loading Data into SQLite
+
+SQLite is perfect for local analysis and doesn't require a server:
+
+```python
+import sqlite3
+import pandas as pd
+import glob
+
+# Create database connection
+conn = sqlite3.connect('f1_data.db')
+
+# Load all CSV files into SQLite
+for csv_file in glob.glob('data/*.csv'):
+    table_name = csv_file.split('/')[-1].replace('.csv', '')
+    df = pd.read_csv(csv_file)
+    df.to_sql(table_name, conn, if_exists='replace', index=False)
+    print(f"Loaded {table_name}: {len(df)} rows")
+
+print("\nDatabase ready!")
+```
+
+### Basic SQL Queries
+
+<CodeGroup>
+
+```sql Driver Wins
+-- Get all race winners with driver names
+SELECT 
+    d.forename || ' ' || d.surname as driver_name,
+    COUNT(*) as wins,
+    MIN(r.year) as first_win,
+    MAX(r.year) as last_win
+FROM results res
+JOIN drivers d ON res.driverId = d.driverId
+JOIN races r ON res.raceId = r.raceId
+WHERE res.position = 1
+GROUP BY res.driverId
+ORDER BY wins DESC
+LIMIT 10;
+```
+
+```sql Constructor Dominance
+-- Find most dominant constructor per season
+WITH SeasonWins AS (
+    SELECT 
+        r.year,
+        c.name as constructor,
+        COUNT(*) as wins
+    FROM results res
+    JOIN constructors c ON res.constructorId = c.constructorId
+    JOIN races r ON res.raceId = r.raceId
+    WHERE res.position = 1
+    GROUP BY r.year, c.constructorId
+)
+SELECT 
+    year,
+    constructor,
+    wins,
+    ROUND(wins * 100.0 / (SELECT COUNT(*) FROM races WHERE year = SeasonWins.year), 2) as win_rate
+FROM SeasonWins
+WHERE wins = (
+    SELECT MAX(wins) 
+    FROM SeasonWins sw2 
+    WHERE sw2.year = SeasonWins.year
+)
+ORDER BY year DESC
+LIMIT 10;
+```
+
+```sql Fastest Pit Stops
+-- Top 10 fastest pit stops in history
+SELECT 
+    d.forename || ' ' || d.surname as driver,
+    c.name as constructor,
+    r.name as race,
+    r.year,
+    ps.duration as pit_stop_duration,
+    ps.lap
+FROM pit_stops ps
+JOIN drivers d ON ps.driverId = d.driverId
+JOIN results res ON ps.raceId = res.raceId AND ps.driverId = res.driverId
+JOIN constructors c ON res.constructorId = c.constructorId
+JOIN races r ON ps.raceId = r.raceId
+WHERE ps.milliseconds > 0
+ORDER BY ps.milliseconds ASC
+LIMIT 10;
+```
+
+</CodeGroup>
+
+### Advanced SQL Examples
+
+#### Championship Battle Analysis
+
+```sql
+-- Analyze championship battles: races where lead changed hands
+WITH StandingsWithChange AS (
+    SELECT 
+        ds.raceId,
+        r.year,
+        r.round,
+        r.name as race_name,
+        ds.driverId,
+        d.forename || ' ' || d.surname as driver,
+        ds.points,
+        ds.position,
+        LAG(ds.position) OVER (
+            PARTITION BY ds.driverId 
+            ORDER BY r.year, r.round
+        ) as prev_position,
+        LEAD(ds.driverId) OVER (
+            PARTITION BY r.year, r.round 
+            ORDER BY ds.position
+        ) as next_driver
+    FROM driver_standings ds
+    JOIN drivers d ON ds.driverId = d.driverId
+    JOIN races r ON ds.raceId = r.raceId
+    WHERE ds.position = 1
+)
+SELECT 
+    year,
+    round,
+    race_name,
+    driver,
+    points,
+    CASE 
+        WHEN prev_position > 1 OR prev_position IS NULL 
+        THEN 'New Leader' 
+        ELSE 'Maintained Lead' 
+    END as status
+FROM StandingsWithChange
+WHERE prev_position != 1 OR prev_position IS NULL
+ORDER BY year DESC, round;
+```
+
+#### Circuit Difficulty Analysis
+
+```sql
+-- Analyze circuit difficulty by DNF rate
+SELECT 
+    cir.name as circuit,
+    cir.country,
+    COUNT(DISTINCT r.raceId) as times_raced,
+    COUNT(*) as total_entries,
+    SUM(CASE WHEN res.positionText = 'R' THEN 1 ELSE 0 END) as dnfs,
+    ROUND(
+        SUM(CASE WHEN res.positionText = 'R' THEN 1 ELSE 0 END) * 100.0 / COUNT(*),
+        2
+    ) as dnf_rate,
+    ROUND(AVG(res.laps), 2) as avg_laps_completed
+FROM results res
+JOIN races r ON res.raceId = r.raceId
+JOIN circuits cir ON r.circuitId = cir.circuitId
+WHERE r.year >= 2000
+GROUP BY cir.circuitId
+HAVING times_raced >= 10
+ORDER BY dnf_rate DESC;
+```
+
+### Using SQL from Python
+
+```python
+import sqlite3
+import pandas as pd
+
+conn = sqlite3.connect('f1_data.db')
+
+# Execute query and get DataFrame
+query = """
+SELECT 
+    d.forename,
+    d.surname,
+    COUNT(DISTINCT r.year) as seasons,
+    COUNT(*) as races,
+    SUM(CASE WHEN res.position = 1 THEN 1 ELSE 0 END) as wins,
+    SUM(res.points) as total_points
+FROM results res
+JOIN drivers d ON res.driverId = d.driverId
+JOIN races r ON res.raceId = r.raceId
+GROUP BY res.driverId
+HAVING races >= 50
+ORDER BY wins DESC
+LIMIT 20
+"""
+
+top_drivers = pd.read_sql_query(query, conn)
+print(top_drivers)
+
+# Parameterized queries for safety
+year = 2023
+query_parameterized = """
+SELECT 
+    d.forename || ' ' || d.surname as driver,
+    c.name as team,
+    SUM(res.points) as points
+FROM results res
+JOIN drivers d ON res.driverId = d.driverId
+JOIN constructors c ON res.constructorId = c.constructorId
+JOIN races r ON res.raceId = r.raceId
+WHERE r.year = ?
+GROUP BY res.driverId
+ORDER BY points DESC
+"""
+
+season_standings = pd.read_sql_query(query_parameterized, conn, params=[year])
+print(f"\n{year} Driver Standings:")
+print(season_standings)
+
+conn.close()
+```
+
+## Pandas Query Methods
+
+### DataFrame Query Syntax
+
+Pandas provides multiple ways to filter and query data:
+
+```python
+import pandas as pd
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Method 1: Boolean indexing (most common)
+wins = results[results['position'] == 1]
+podiums = results[results['position'] <= 3]
+
+# Method 2: .query() method (more readable for complex filters)
+recent_podiums = results.query('position <= 3 and raceId > 1000')
+
+# Method 3: .loc[] for label-based indexing
+top_results = results.loc[results['points'] > 15, ['driverId', 'raceId', 'points']]
+
+# Method 4: .isin() for membership testing
+champions = [1, 4, 20, 30]  # Driver IDs
+champion_results = results[results['driverId'].isin(champions)]
+
+# Method 5: String methods for text filtering
+british_drivers = drivers[drivers['nationality'].str.contains('British')]
+```
+
+### Complex Filtering Patterns
+
+<CodeGroup>
+
+```python Multi-Condition Filtering
+import pandas as pd
+
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Combine multiple conditions
+# Find all podiums from 2020-2024 with more than 15 points
+filtered = results[
+    (results['position'] <= 3) & 
+    (results['points'] > 15) &
+    (results['raceId'].isin(races[races['year'].between(2020, 2024)]['raceId']))
+]
+
+print(f"Found {len(filtered)} results matching criteria")
+```
+
+```python OR Conditions
+import pandas as pd
+
+results = pd.read_csv('data/results.csv')
+
+# Use | for OR conditions (must use parentheses)
+wins_or_fastest = results[
+    (results['position'] == 1) | 
+    (results['rank'] == 1)
+]
+
+# Alternative: Use .query() for more readable OR
+wins_or_fastest = results.query('position == 1 or rank == 1')
+
+print(f"Wins or fastest laps: {len(wins_or_fastest)}")
+```
+
+```python NOT Conditions
+import pandas as pd
+
+results = pd.read_csv('data/results.csv')
+
+# Use ~ for NOT
+finished = results[~results['positionText'].isin(['R', 'D', 'E', 'W', 'F', 'N'])]
+
+# Exclude DNFs
+dnf_statuses = ['R', 'D']
+completed = results[~results['positionText'].isin(dnf_statuses)]
+
+print(f"Completed races: {len(completed)}")
+```
+
+</CodeGroup>
+
+### Aggregation and Grouping
+
+```python
+import pandas as pd
+import numpy as np
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Merge for complete information
+full_results = results.merge(races[['raceId', 'year']], on='raceId')
+
+# Group by driver and calculate statistics
+driver_stats = full_results.groupby('driverId').agg({
+    'raceId': 'count',
+    'points': 'sum',
+    'position': lambda x: (x == 1).sum(),
+    'positionOrder': 'mean'
+}).rename(columns={
+    'raceId': 'races',
+    'position': 'wins',
+    'positionOrder': 'avg_finish'
+})
+
+# Add custom calculations
+driver_stats['points_per_race'] = (
+    driver_stats['points'] / driver_stats['races']
+).round(2)
+
+# Merge with driver names
+driver_stats = driver_stats.merge(
+    drivers[['driverId', 'forename', 'surname']], 
+    on='driverId'
+)
+
+# Sort by total points
+top_drivers = driver_stats.sort_values('points', ascending=False).head(20)
+print("Top 20 Drivers by Points:")
+print(top_drivers[['forename', 'surname', 'races', 'wins', 'points', 'points_per_race']])
+```
+
+### Window Functions in Pandas
+
+```python
+import pandas as pd
+
+# Load data
+driver_standings = pd.read_csv('data/driver_standings.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Merge to get year and driver names
+standings = (
+    driver_standings
+    .merge(races[['raceId', 'year', 'round']], on='raceId')
+    .merge(drivers[['driverId', 'forename', 'surname']], on='driverId')
+    .sort_values(['year', 'round', 'position'])
+)
+
+# Calculate points gained per race
+standings['points_gained'] = (
+    standings
+    .groupby(['driverId', 'year'])['points']
+    .diff()
+    .fillna(standings['points'])
+)
+
+# Calculate rolling average (last 5 races)
+standings['rolling_avg_points'] = (
+    standings
+    .groupby(['driverId', 'year'])['points_gained']
+    .rolling(window=5, min_periods=1)
+    .mean()
+    .reset_index(level=[0, 1], drop=True)
+)
+
+# Get championship leader per race
+leaders = standings[standings['position'] == 1]
+
+print("Championship Leaders by Race:")
+print(leaders[['year', 'round', 'forename', 'surname', 'points', 'rolling_avg_points']].tail(10))
+```
+
+## Performance Tips for Large Datasets
+
+### Indexing for Faster Queries
+
+```python
+import pandas as pd
+
+# Load lap_times (600K+ rows)
+lap_times = pd.read_csv('data/lap_times.csv')
+
+print(f"Original memory: {lap_times.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+
+# Set index for faster queries
+lap_times_indexed = lap_times.set_index(['raceId', 'driverId', 'lap'])
+
+# Query specific race and driver (much faster with index)
+race_id = 1096
+driver_id = 1
+driver_laps = lap_times_indexed.xs((race_id, driver_id), level=[0, 1])
+
+print(f"\nQueried {len(driver_laps)} laps")
+print(f"Fastest lap: {driver_laps['milliseconds'].min() / 1000:.3f}s")
+```
+
+### Chunk Processing for Memory Efficiency
+
+```python
+import pandas as pd
+
+# Process lap_times in chunks to avoid memory issues
+chunk_size = 100000
+fast_laps = []
+
+for chunk in pd.read_csv('data/lap_times.csv', chunksize=chunk_size):
+    # Filter for lap times under 90 seconds
+    fast = chunk[chunk['milliseconds'] < 90000]
+    fast_laps.append(fast)
+    
+result = pd.concat(fast_laps, ignore_index=True)
+print(f"Found {len(result)} fast laps")
+```
+
+### Using Categorical Data Types
+
+```python
+import pandas as pd
+
+results = pd.read_csv('data/results.csv')
+
+# Convert repeated values to categorical
+results['positionText'] = results['positionText'].astype('category')
+results['statusId'] = results['statusId'].astype('category')
+
+print("Memory savings:")
+print(f"Original: {pd.read_csv('data/results.csv').memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+print(f"Optimized: {results.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+```
+
+### Query Optimization Strategies
+
+<Tip>
+**Performance Best Practices:**
+- Filter early: Reduce dataset size before complex operations
+- Use vectorized operations: Avoid Python loops
+- Set appropriate dtypes: Use int8/int16 instead of int64 where possible
+- Index frequently queried columns: Speeds up lookups
+- Use categorical for repeated strings: Saves memory
+- Consider polars for large datasets: 5-10x faster than pandas
+</Tip>
+
+```python
+import pandas as pd
+import time
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Bad: Filter after joining (processes all data)
+start = time.time()
+full_join = results.merge(races, on='raceId')
+filtered = full_join[full_join['year'] == 2023]
+print(f"Slow method: {time.time() - start:.3f}s")
+
+# Good: Filter before joining (processes less data)
+start = time.time()
+races_2023 = races[races['year'] == 2023]
+filtered_fast = results[results['raceId'].isin(races_2023['raceId'])].merge(
+    races_2023, 
+    on='raceId'
+)
+print(f"Fast method: {time.time() - start:.3f}s")
+```
+
+## PostgreSQL for Production
+
+For larger deployments or team collaboration, use PostgreSQL:
+
+```python
+import pandas as pd
+from sqlalchemy import create_engine
+
+# Connect to PostgreSQL
+engine = create_engine('postgresql://user:password@localhost:5432/f1_data')
+
+# Load data from CSV to PostgreSQL
+for table in ['drivers', 'races', 'results', 'lap_times']:
+    df = pd.read_csv(f'data/{table}.csv')
+    df.to_sql(table, engine, if_exists='replace', index=False)
+    print(f"Loaded {table}")
+
+# Create indexes for better query performance
+with engine.connect() as conn:
+    conn.execute('CREATE INDEX idx_results_driver ON results(driverId)')
+    conn.execute('CREATE INDEX idx_results_race ON results(raceId)')
+    conn.execute('CREATE INDEX idx_lap_times_race ON lap_times(raceId)')
+    conn.execute('CREATE INDEX idx_races_year ON races(year)')
+    print("Indexes created")
+
+# Query with pandas
+query = "SELECT * FROM results WHERE position <= 3"
+podiums = pd.read_sql(query, engine)
+print(f"Loaded {len(podiums)} podium finishes")
+```
+
+## Next Steps
+
+- Create [visualizations](/guides/visualization) from your queries
+- Learn [data analysis patterns](/guides/data-analysis) for deeper insights
+- Set up [integrations](/guides/integrations) with BI tools

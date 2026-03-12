@@ -1,0 +1,683 @@
+---
+title: 'Data Visualization'
+description: 'Create stunning F1 visualizations with matplotlib, plotly, and more'
+icon: 'chart-simple'
+---
+
+# Data Visualization Guide
+
+Visualize Formula 1 data with beautiful, interactive charts. This guide covers everything from simple plots to complex dashboards.
+
+## Setup
+
+Install required visualization libraries:
+
+```bash
+pip install matplotlib seaborn plotly pandas numpy
+```
+
+## Basic Plotting with Matplotlib
+
+### Driver Championship Progression
+
+Track how championship standings evolve throughout a season:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set style
+sns.set_style('darkgrid')
+plt.rcParams['figure.figsize'] = (12, 6)
+
+# Load data
+driver_standings = pd.read_csv('data/driver_standings.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Get 2024 championship battle
+year = 2024
+races_2024 = races[races['year'] == year]
+standings_2024 = driver_standings[driver_standings['raceId'].isin(races_2024['raceId'])]
+
+# Merge with race and driver info
+championship_data = (
+    standings_2024
+    .merge(races_2024[['raceId', 'round', 'name']], on='raceId')
+    .merge(drivers[['driverId', 'forename', 'surname', 'code']], on='driverId')
+    .sort_values(['round', 'position'])
+)
+
+# Plot top 5 drivers
+top_drivers = (
+    championship_data
+    .groupby('driverId')['points']
+    .max()
+    .nlargest(5)
+    .index
+)
+
+plt.figure(figsize=(14, 7))
+
+for driver_id in top_drivers:
+    driver_data = championship_data[championship_data['driverId'] == driver_id]
+    driver_name = f"{driver_data.iloc[0]['code']}"
+    plt.plot(driver_data['round'], driver_data['points'], 
+             marker='o', linewidth=2, label=driver_name)
+
+plt.xlabel('Race Round', fontsize=12)
+plt.ylabel('Championship Points', fontsize=12)
+plt.title(f'{year} F1 World Championship Progression', fontsize=14, fontweight='bold')
+plt.legend(title='Driver', fontsize=10)
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.savefig('championship_progression.png', dpi=300)
+plt.show()
+```
+
+### Constructor Performance Heatmap
+
+Visualize constructor performance across seasons:
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+# Load data
+constructor_standings = pd.read_csv('data/constructor_standings.csv')
+races = pd.read_csv('data/races.csv')
+constructors = pd.read_csv('data/constructors.csv')
+
+# Get final standings per season (last race)
+final_standings = (
+    constructor_standings
+    .merge(races[['raceId', 'year', 'round']], on='raceId')
+    .merge(constructors[['constructorId', 'name']], on='constructorId')
+    .sort_values(['year', 'round'])
+    .groupby(['year', 'constructorId', 'name'])
+    .last()
+    .reset_index()
+)
+
+# Filter to recent years and top teams
+recent_years = final_standings[final_standings['year'] >= 2014]
+top_teams = recent_years.groupby('name')['wins'].sum().nlargest(6).index
+
+# Create pivot table
+heatmap_data = (
+    recent_years[recent_years['name'].isin(top_teams)]
+    .pivot(index='name', columns='year', values='position')
+)
+
+# Plot heatmap
+plt.figure(figsize=(14, 8))
+sns.heatmap(
+    heatmap_data, 
+    annot=True, 
+    fmt='g', 
+    cmap='RdYlGn_r',
+    cbar_kws={'label': 'Championship Position'},
+    linewidths=0.5
+)
+
+plt.title('Constructor Championship Positions (2014-2024)', 
+          fontsize=14, fontweight='bold', pad=20)
+plt.xlabel('Season', fontsize=12)
+plt.ylabel('Constructor', fontsize=12)
+plt.tight_layout()
+plt.savefig('constructor_heatmap.png', dpi=300)
+plt.show()
+```
+
+## Interactive Plots with Plotly
+
+### Lap Time Evolution
+
+Create an interactive lap time analysis:
+
+```python
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+
+# Load data
+lap_times = pd.read_csv('data/lap_times.csv')
+races = pd.read_csv('data/races.csv')
+drivers = pd.read_csv('data/drivers.csv')
+
+# Get a specific race (e.g., Monaco 2024)
+monaco_2024 = races[
+    (races['year'] == 2024) & 
+    (races['name'].str.contains('Monaco'))
+].iloc[0]['raceId']
+
+# Get lap times for this race
+race_laps = lap_times[lap_times['raceId'] == monaco_2024]
+
+# Merge with driver info
+race_laps = race_laps.merge(
+    drivers[['driverId', 'code', 'forename', 'surname']], 
+    on='driverId'
+)
+
+# Convert milliseconds to seconds
+race_laps['seconds'] = race_laps['milliseconds'] / 1000
+
+# Get top 5 finishers
+top_5_drivers = race_laps.groupby('driverId')['position'].last().nsmallest(5).index
+plot_data = race_laps[race_laps['driverId'].isin(top_5_drivers)]
+
+# Create interactive plot
+fig = go.Figure()
+
+for driver_id in top_5_drivers:
+    driver_laps = plot_data[plot_data['driverId'] == driver_id]
+    driver_name = f"{driver_laps.iloc[0]['code']}"
+    
+    fig.add_trace(go.Scatter(
+        x=driver_laps['lap'],
+        y=driver_laps['seconds'],
+        mode='lines+markers',
+        name=driver_name,
+        hovertemplate='<b>%{text}</b><br>' +
+                      'Lap: %{x}<br>' +
+                      'Time: %{y:.3f}s<br>' +
+                      '<extra></extra>',
+        text=[driver_name] * len(driver_laps)
+    ))
+
+fig.update_layout(
+    title='Monaco GP 2024 - Lap Time Evolution (Top 5)',
+    xaxis_title='Lap Number',
+    yaxis_title='Lap Time (seconds)',
+    hovermode='closest',
+    height=600,
+    template='plotly_dark'
+)
+
+fig.write_html('lap_times_monaco.html')
+fig.show()
+```
+
+### Pit Stop Strategy Comparison
+
+Visualize different pit stop strategies:
+
+```python
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+
+# Load data
+pit_stops = pd.read_csv('data/pit_stops.csv')
+results = pd.read_csv('data/results.csv')
+drivers = pd.read_csv('data/drivers.csv')
+races = pd.read_csv('data/races.csv')
+
+# Get a specific race
+race_id = 1100  # Example race
+race_info = races[races['raceId'] == race_id].iloc[0]
+
+# Get pit stops for this race
+race_pit_stops = pit_stops[pit_stops['raceId'] == race_id]
+
+# Merge with driver info and results
+pit_data = (
+    race_pit_stops
+    .merge(drivers[['driverId', 'code']], on='driverId')
+    .merge(results[['raceId', 'driverId', 'position']], 
+           on=['raceId', 'driverId'])
+    .sort_values('position')
+)
+
+# Get top 10 finishers
+top_10 = pit_data[pit_data['position'] <= 10]
+
+# Create strategy visualization
+fig = go.Figure()
+
+for idx, driver_id in enumerate(top_10['driverId'].unique()):
+    driver_stops = top_10[top_10['driverId'] == driver_id]
+    driver_code = driver_stops.iloc[0]['code']
+    final_pos = driver_stops.iloc[0]['position']
+    
+    fig.add_trace(go.Scatter(
+        x=driver_stops['lap'],
+        y=[idx] * len(driver_stops),
+        mode='markers',
+        marker=dict(size=15, symbol='diamond'),
+        name=f"P{final_pos} - {driver_code}",
+        hovertemplate='<b>%{text}</b><br>' +
+                      'Pit Stop Lap: %{x}<br>' +
+                      'Duration: %{customdata:.2f}s<br>' +
+                      '<extra></extra>',
+        text=[driver_code] * len(driver_stops),
+        customdata=driver_stops['duration']
+    ))
+
+fig.update_layout(
+    title=f'{race_info["name"]} {race_info["year"]} - Pit Stop Strategies',
+    xaxis_title='Lap Number',
+    yaxis_title='Driver (by finishing position)',
+    yaxis=dict(
+        tickmode='array',
+        tickvals=list(range(len(top_10['driverId'].unique()))),
+        ticktext=[f"P{p}" for p in range(1, len(top_10['driverId'].unique()) + 1)]
+    ),
+    height=600,
+    showlegend=True,
+    hovermode='closest'
+)
+
+fig.write_html('pit_stop_strategy.html')
+fig.show()
+```
+
+### 3D Constructor Performance Visualization
+
+Create a 3D scatter plot of constructor performance:
+
+```python
+import pandas as pd
+import plotly.express as px
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+constructors = pd.read_csv('data/constructors.csv')
+
+# Calculate constructor stats by year
+constructor_stats = (
+    results
+    .merge(races[['raceId', 'year']], on='raceId')
+    .merge(constructors[['constructorId', 'name']], on='constructorId')
+    .groupby(['year', 'constructorId', 'name'])
+    .agg({
+        'points': 'sum',
+        'position': lambda x: (x == 1).sum(),
+        'raceId': 'count'
+    })
+    .rename(columns={'position': 'wins', 'raceId': 'races'})
+    .reset_index()
+)
+
+# Filter to recent years and successful teams
+recent_stats = constructor_stats[
+    (constructor_stats['year'] >= 2014) &
+    (constructor_stats['points'] > 0)
+]
+
+# Calculate win rate
+recent_stats['win_rate'] = (recent_stats['wins'] / recent_stats['races'] * 100).round(2)
+
+# Create 3D scatter
+fig = px.scatter_3d(
+    recent_stats,
+    x='year',
+    y='points',
+    z='win_rate',
+    color='name',
+    size='wins',
+    hover_data=['wins', 'races'],
+    title='Constructor Performance Evolution (2014-2024)',
+    labels={
+        'year': 'Season',
+        'points': 'Total Points',
+        'win_rate': 'Win Rate (%)',
+        'name': 'Constructor'
+    },
+    height=700
+)
+
+fig.update_traces(marker=dict(line=dict(width=1, color='white')))
+fig.write_html('constructor_3d.html')
+fig.show()
+```
+
+<Tip>
+**Plotly Tips:**
+- Use `fig.write_html()` to save interactive plots
+- Set `template='plotly_dark'` for dark mode
+- Add `hovermode='closest'` for better tooltips
+- Export to static images with `fig.write_image('plot.png')` (requires kaleido)
+</Tip>
+
+## Advanced Visualizations
+
+### Race Results Sankey Diagram
+
+Show how grid positions translate to finishing positions:
+
+```python
+import pandas as pd
+import plotly.graph_objects as go
+
+# Load data
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Get a specific race
+race_id = 1100
+race_results = results[results['raceId'] == race_id].copy()
+
+# Filter out DNFs and limit to top 10
+race_results = race_results[
+    (race_results['position'].notna()) &
+    (race_results['grid'] <= 10) &
+    (race_results['positionOrder'] <= 10)
+]
+
+# Create source and target nodes
+source = race_results['grid'].astype(int).tolist()
+target = [10 + int(x) for x in race_results['positionOrder'].tolist()]
+value = [1] * len(race_results)
+
+# Create labels
+labels = [f'Grid {i}' for i in range(1, 11)] + [f'P{i}' for i in range(1, 11)]
+
+# Create colors based on position change
+colors = []
+for s, t in zip(source, target):
+    if t - 10 < s:
+        colors.append('rgba(0, 255, 0, 0.4)')  # Green for position gain
+    elif t - 10 > s:
+        colors.append('rgba(255, 0, 0, 0.4)')  # Red for position loss
+    else:
+        colors.append('rgba(128, 128, 128, 0.4)')  # Gray for no change
+
+# Create Sankey diagram
+fig = go.Figure(data=[go.Sankey(
+    node=dict(
+        pad=15,
+        thickness=20,
+        line=dict(color='black', width=0.5),
+        label=labels,
+        color='blue'
+    ),
+    link=dict(
+        source=source,
+        target=target,
+        value=value,
+        color=colors
+    )
+)])
+
+fig.update_layout(
+    title='Grid Position to Finish Position Flow',
+    font_size=12,
+    height=600
+)
+
+fig.write_html('race_flow.html')
+fig.show()
+```
+
+### Circuit Win Distribution Map
+
+Create a world map of circuit locations with win counts:
+
+```python
+import pandas as pd
+import plotly.express as px
+
+# Load data
+circuits = pd.read_csv('data/circuits.csv')
+races = pd.read_csv('data/races.csv')
+results = pd.read_csv('data/results.csv')
+
+# Count races per circuit
+race_counts = (
+    races
+    .groupby('circuitId')
+    .agg({
+        'raceId': 'count',
+        'year': ['min', 'max']
+    })
+    .reset_index()
+)
+race_counts.columns = ['circuitId', 'total_races', 'first_race', 'last_race']
+
+# Merge with circuit data
+circuit_data = circuits.merge(race_counts, on='circuitId')
+
+# Create map
+fig = px.scatter_geo(
+    circuit_data,
+    lat='lat',
+    lon='lng',
+    hover_name='name',
+    hover_data={
+        'country': True,
+        'total_races': True,
+        'first_race': True,
+        'last_race': True,
+        'lat': False,
+        'lng': False
+    },
+    size='total_races',
+    color='total_races',
+    color_continuous_scale='Reds',
+    title='Formula 1 Circuits Worldwide',
+    projection='natural earth'
+)
+
+fig.update_layout(
+    height=600,
+    geo=dict(
+        showland=True,
+        landcolor='rgb(243, 243, 243)',
+        coastlinecolor='rgb(204, 204, 204)',
+    )
+)
+
+fig.write_html('circuit_map.html')
+fig.show()
+```
+
+## Dashboard with Plotly Dash
+
+Create an interactive dashboard:
+
+```python
+import dash
+from dash import dcc, html, Input, Output
+import plotly.express as px
+import pandas as pd
+
+# Load data
+drivers = pd.read_csv('data/drivers.csv')
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Merge data
+full_data = (
+    results
+    .merge(races[['raceId', 'year', 'name']], on='raceId')
+    .merge(drivers[['driverId', 'forename', 'surname', 'code']], on='driverId')
+)
+
+# Initialize app
+app = dash.Dash(__name__)
+
+# App layout
+app.layout = html.Div([
+    html.H1('Formula 1 Dashboard', style={'textAlign': 'center'}),
+    
+    html.Div([
+        html.Label('Select Driver:'),
+        dcc.Dropdown(
+            id='driver-dropdown',
+            options=[
+                {'label': f"{row['forename']} {row['surname']}", 'value': row['driverId']}
+                for _, row in drivers[drivers['driverId'].isin(full_data['driverId'].unique())].iterrows()
+            ],
+            value=1,  # Default to Lewis Hamilton
+            clearable=False
+        )
+    ], style={'width': '48%', 'display': 'inline-block'}),
+    
+    html.Div([
+        html.Label('Select Year Range:'),
+        dcc.RangeSlider(
+            id='year-slider',
+            min=full_data['year'].min(),
+            max=full_data['year'].max(),
+            value=[2014, full_data['year'].max()],
+            marks={str(year): str(year) for year in range(2010, 2025, 5)},
+            step=1
+        )
+    ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'}),
+    
+    html.Div([
+        dcc.Graph(id='points-over-time'),
+        dcc.Graph(id='position-distribution')
+    ])
+])
+
+# Callbacks
+@app.callback(
+    [Output('points-over-time', 'figure'),
+     Output('position-distribution', 'figure')],
+    [Input('driver-dropdown', 'value'),
+     Input('year-slider', 'value')]
+)
+def update_graphs(driver_id, year_range):
+    # Filter data
+    filtered = full_data[
+        (full_data['driverId'] == driver_id) &
+        (full_data['year'] >= year_range[0]) &
+        (full_data['year'] <= year_range[1])
+    ]
+    
+    # Points over time
+    yearly_points = filtered.groupby('year')['points'].sum().reset_index()
+    fig1 = px.line(
+        yearly_points,
+        x='year',
+        y='points',
+        title='Points per Season',
+        markers=True
+    )
+    
+    # Position distribution
+    position_counts = filtered['positionOrder'].value_counts().sort_index()
+    fig2 = px.bar(
+        x=position_counts.index,
+        y=position_counts.values,
+        title='Finishing Position Distribution',
+        labels={'x': 'Position', 'y': 'Count'}
+    )
+    
+    return fig1, fig2
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
+```
+
+Run the dashboard:
+
+```bash
+python dashboard.py
+```
+
+Then open `http://127.0.0.1:8050` in your browser.
+
+## Seaborn Statistical Plots
+
+### Driver Age vs Performance
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from datetime import datetime
+
+# Load data
+drivers = pd.read_csv('data/drivers.csv')
+results = pd.read_csv('data/results.csv')
+races = pd.read_csv('data/races.csv')
+
+# Merge and calculate age at race time
+full_data = (
+    results
+    .merge(races[['raceId', 'year', 'date']], on='raceId')
+    .merge(drivers[['driverId', 'dob', 'forename', 'surname']], on='driverId')
+)
+
+# Convert dates
+full_data['race_date'] = pd.to_datetime(full_data['date'])
+full_data['birth_date'] = pd.to_datetime(full_data['dob'])
+full_data['age'] = (full_data['race_date'] - full_data['birth_date']).dt.days / 365.25
+
+# Filter recent years and wins
+wins = full_data[
+    (full_data['position'] == 1) &
+    (full_data['year'] >= 2000)
+].copy()
+
+# Create plot
+plt.figure(figsize=(12, 6))
+sns.scatterplot(
+    data=wins,
+    x='age',
+    y='points',
+    hue='year',
+    size='year',
+    sizes=(50, 200),
+    alpha=0.7,
+    palette='viridis'
+)
+
+plt.title('Driver Age at Race Win (2000-Present)', fontsize=14, fontweight='bold')
+plt.xlabel('Age (years)', fontsize=12)
+plt.ylabel('Points Scored', fontsize=12)
+plt.legend(title='Season', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.savefig('age_vs_performance.png', dpi=300, bbox_inches='tight')
+plt.show()
+```
+
+## Exporting Visualizations
+
+### High-Resolution Images
+
+```python
+import matplotlib.pyplot as plt
+
+# Your plotting code here
+plt.figure(figsize=(16, 9))
+# ... create plot ...
+
+# Save as high-res PNG
+plt.savefig('plot.png', dpi=300, bbox_inches='tight', facecolor='white')
+
+# Save as vector (SVG/PDF) for publications
+plt.savefig('plot.svg', format='svg', bbox_inches='tight')
+plt.savefig('plot.pdf', format='pdf', bbox_inches='tight')
+```
+
+### Interactive HTML
+
+```python
+import plotly.graph_objects as go
+
+# Create plotly figure
+fig = go.Figure()
+# ... add traces ...
+
+# Save as standalone HTML
+fig.write_html(
+    'interactive_plot.html',
+    include_plotlyjs='cdn',  # Use CDN for smaller file size
+    config={'displayModeBar': True, 'displaylogo': False}
+)
+```
+
+## Next Steps
+
+- Learn [data analysis patterns](/guides/data-analysis) for preparing visualization data
+- Set up [integrations](/guides/integrations) with BI tools like Tableau
+- Explore [querying techniques](/guides/querying) for complex visualizations

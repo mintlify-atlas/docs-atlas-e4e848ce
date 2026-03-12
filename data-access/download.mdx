@@ -1,0 +1,177 @@
+---
+title: 'Download Dataset'
+description: 'Download the RaceData Formula 1 dataset directly to your local machine'
+icon: 'download'
+---
+
+The RaceData Formula 1 dataset is available for direct download in multiple formats. Choose the method that best suits your needs.
+
+## Quick Download
+
+The easiest way to get started is to download the complete dataset as a single zip file:
+
+<Card title="Latest Release" icon="box-archive" href="https://github.com/TracingInsights/RaceData/releases/latest/download/data.zip">
+  Download the latest `data.zip` file containing all 18 CSV tables
+</Card>
+
+## Download Methods
+
+<Tabs>
+  <Tab title="GitHub Releases">
+    ### From GitHub Releases
+
+    The most reliable method to download the complete dataset is through GitHub Releases:
+
+    <Steps>
+      <Step title="Visit the Releases Page">
+        Navigate to the [RaceData releases](https://github.com/TracingInsights/RaceData/releases) page on GitHub.
+      </Step>
+      
+      <Step title="Download the Latest Version">
+        Download `data.zip` from the latest release. This archive contains all CSV files organized in the data directory.
+        
+        Direct link: `https://github.com/TracingInsights/RaceData/releases/latest/download/data.zip`
+      </Step>
+      
+      <Step title="Extract the Archive">
+        Extract the zip file to your desired location:
+        
+        ```bash
+        unzip data.zip -d formula1-data
+        cd formula1-data/data
+        ```
+      </Step>
+    </Steps>
+
+    <Note>
+      The dataset is automatically updated within 3 hours after each Formula 1 race via GitHub Actions.
+    </Note>
+  </Tab>
+
+  <Tab title="Individual CSV Files">
+    ### Download Individual Tables
+
+    You can download specific CSV files directly from the GitHub repository without getting the entire dataset:
+
+    <Steps>
+      <Step title="Browse the Data Directory">
+        Navigate to the [data folder](https://github.com/TracingInsights/RaceData/tree/main/data) in the repository.
+      </Step>
+      
+      <Step title="Select Your Table">
+        Choose the CSV file you need from the available tables:
+        - `circuits.csv` - Circuit information
+        - `drivers.csv` - Driver details
+        - `constructors.csv` - Constructor/team information
+        - `races.csv` - Race schedule and details
+        - `results.csv` - Race results
+        - `lap_times.csv` - Lap-by-lap timing data
+        - `pit_stops.csv` - Pit stop information
+        - `qualifying.csv` - Qualifying results
+        - And more...
+      </Step>
+      
+      <Step title="Download Raw File">
+        Click on the file, then click the "Raw" button to download the CSV directly.
+        
+        Or use `wget` or `curl` to download programmatically:
+        
+        ```bash
+        # Download a specific table
+        wget https://raw.githubusercontent.com/TracingInsights/RaceData/main/data/drivers.csv
+        
+        # Or using curl
+        curl -O https://raw.githubusercontent.com/TracingInsights/RaceData/main/data/races.csv
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+
+  <Tab title="Clone Repository">
+    ### Clone the Git Repository
+
+    For developers who want to track updates or contribute, clone the entire repository:
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/TracingInsights/RaceData.git
+    
+    # Navigate to data directory
+    cd RaceData/data
+    
+    # List all available files
+    ls -lh
+    ```
+
+    <Note>
+      This method gives you access to the complete repository including scripts and documentation.
+    </Note>
+
+    To update your local copy with the latest data:
+
+    ```bash
+    cd RaceData
+    git pull origin main
+    ```
+  </Tab>
+</Tabs>
+
+## File Structure
+
+After downloading and extracting the dataset, you'll find the following structure:
+
+```
+data/
+├── circuits.csv                    # Circuit information and locations
+├── constructor_results.csv         # Constructor race results
+├── constructor_standings.csv       # Constructor championship standings
+├── constructors.csv                # Constructor/team details
+├── driver_standings.csv            # Driver championship standings
+├── drivers.csv                     # Driver information
+├── fatal_accidents_drivers.csv     # Historical driver fatal accidents
+├── fatal_accidents_marshalls.csv   # Historical marshall fatal accidents
+├── lap_times.csv                   # Lap-by-lap timing data
+├── pit_stops.csv                   # Pit stop information
+├── qualifying.csv                  # Qualifying session results
+├── races.csv                       # Race schedule and details
+├── red_flags.csv                   # Red flag incidents
+├── results.csv                     # Race results
+├── safety_cars.csv                 # Safety car deployment data
+├── seasons.csv                     # Season information
+├── sprint_results.csv              # Sprint race results
+├── status.csv                      # Finishing status codes
+└── virtual_safety_car_estimates.json  # Virtual safety car periods
+```
+
+## Dataset Size
+
+The complete dataset zip file is approximately **50-60 MB** compressed, containing historical data from 1950 through the current season.
+
+## Data Format
+
+All files are in **CSV (Comma-Separated Values)** format, except for `virtual_safety_car_estimates.json` which is in JSON format. CSV files can be opened with:
+
+- Spreadsheet applications (Excel, Google Sheets, LibreOffice Calc)
+- Data analysis tools (Python pandas, R, Julia)
+- Database management systems (PostgreSQL, MySQL, SQLite)
+- Any text editor
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Schema" icon="book" href="/schema/overview">
+    Understand the structure and columns of each table
+  </Card>
+  
+  <Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+    Start analyzing F1 data in minutes
+  </Card>
+  
+  <Card title="HuggingFace Access" icon="face-smile" href="/data-access/huggingface">
+    Load data directly using the HuggingFace datasets library
+  </Card>
+  
+  <Card title="Programmatic Access" icon="code" href="/data-access/programmatic">
+    Automate downloads using Python scripts
+  </Card>
+</CardGroup>

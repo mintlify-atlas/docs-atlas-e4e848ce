@@ -1,0 +1,214 @@
+---
+title: Standings
+description: Reference documentation for driver_standings.csv and constructor_standings.csv tables
+---
+
+The standings tables track championship points and positions throughout each Formula 1 season.
+
+## Driver Standings
+
+The `driver_standings.csv` table contains driver championship standings after each race.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `driverStandingsId` | integer | Unique identifier for each standing entry |
+| `raceId` | integer | Foreign key to races.csv |
+| `driverId` | integer | Foreign key to drivers.csv |
+| `points` | float | Total championship points after this race |
+| `position` | integer | Position in the championship |
+| `positionText` | string | Text representation of position |
+| `wins` | integer | Number of wins in the season up to this race |
+
+### Sample Data
+
+| driverStandingsId | raceId | driverId | points | position | wins |
+|-------------------|--------|----------|--------|----------|------|
+| 1 | 18 | 1 | 10 | 1 | 1 |
+| 2 | 18 | 2 | 8 | 2 | 0 |
+| 3 | 18 | 3 | 6 | 3 | 0 |
+| 4 | 18 | 4 | 5 | 4 | 0 |
+
+### Dataset Statistics
+
+- **Total Records:** 35,383 driver standing entries
+- **Coverage:** Every race since 1950
+
+---
+
+## Constructor Standings
+
+The `constructor_standings.csv` table contains constructor championship standings after each race.
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `constructorStandingsId` | integer | Unique identifier for each standing entry |
+| `raceId` | integer | Foreign key to races.csv |
+| `constructorId` | integer | Foreign key to constructors.csv |
+| `points` | float | Total championship points after this race |
+| `position` | integer | Position in the championship |
+| `positionText` | string | Text representation of position |
+| `wins` | integer | Number of wins in the season up to this race |
+
+### Sample Data
+
+| constructorStandingsId | raceId | constructorId | points | position | wins |
+|------------------------|--------|---------------|--------|----------|------|
+| 1 | 18 | 1 | 14 | 1 | 1 |
+| 2 | 18 | 2 | 8 | 3 | 0 |
+| 3 | 18 | 3 | 9 | 2 | 0 |
+| 4 | 18 | 4 | 5 | 4 | 0 |
+
+### Dataset Statistics
+
+- **Total Records:** 13,642 constructor standing entries
+- **Coverage:** Constructor championship has existed since 1958
+
+---
+
+## Relationships
+
+<Note>
+**Driver Standings References:**
+- `driver_standings.raceId` → `races.raceId`
+- `driver_standings.driverId` → `drivers.driverId`
+
+**Constructor Standings References:**
+- `constructor_standings.raceId` → `races.raceId`
+- `constructor_standings.constructorId` → `constructors.constructorId`
+</Note>
+
+## Example Queries
+
+### Get championship standings after a specific race
+
+```python
+import pandas as pd
+
+driver_standings = pd.read_csv('driver_standings.csv')
+standings = driver_standings[driver_standings['raceId'] == 1100]
+standings_sorted = standings.sort_values('position')
+print(standings_sorted[['position', 'driverId', 'points', 'wins']].head(10))
+```
+
+### Track championship leader throughout a season
+
+```python
+races = pd.read_csv('races.csv')
+
+season_races = races[races['year'] == 2023]['raceId']
+leaders = driver_standings[
+    (driver_standings['raceId'].isin(season_races)) & 
+    (driver_standings['position'] == 1)
+]
+print(leaders[['raceId', 'driverId', 'points']])
+```
+
+### Find closest championship battles
+
+```python
+# Get final race of each season
+final_races = races.groupby('year')['raceId'].max()
+
+for race_id in final_races:
+    final_standings = driver_standings[
+        (driver_standings['raceId'] == race_id)
+    ].nsmallest(2, 'position')
+    
+    if len(final_standings) >= 2:
+        gap = final_standings.iloc[1]['points'] - final_standings.iloc[0]['points']
+        year = races[races['raceId'] == race_id]['year'].iloc[0]
+        print(f"{year}: Championship gap = {gap} points")
+```
+
+### Analyze constructor dominance
+
+```python
+constructor_standings = pd.read_csv('constructor_standings.csv')
+
+season_races = races[races['year'] == 2023]['raceId']
+season_standings = constructor_standings[
+    constructor_standings['raceId'].isin(season_races)
+]
+
+# Count how many times each constructor led
+leadership_counts = season_standings[
+    season_standings['position'] == 1
+]['constructorId'].value_counts()
+print(leadership_counts)
+```
+
+### Calculate points progression
+
+```python
+driver_id = 1  # Lewis Hamilton
+season_races = races[races['year'] == 2023]['raceId'].tolist()
+
+driver_progression = driver_standings[
+    (driver_standings['driverId'] == driver_id) & 
+    (driver_standings['raceId'].isin(season_races))
+].sort_values('raceId')
+
+import matplotlib.pyplot as plt
+plt.plot(range(len(driver_progression)), driver_progression['points'])
+plt.xlabel('Race Number')
+plt.ylabel('Total Points')
+plt.title('Points Progression Through Season')
+plt.show()
+```
+
+### Find season champions
+
+```python
+# Get final race of each season
+final_races = races.groupby('year')['raceId'].max().reset_index()
+
+champions = driver_standings.merge(final_races, on='raceId')
+champions = champions[champions['position'] == 1]
+
+print(champions[['year', 'driverId', 'points', 'wins']])
+```
+
+### Compare driver vs constructor points
+
+```python
+drivers = pd.read_csv('drivers.csv')
+results = pd.read_csv('results.csv')
+
+# For a specific race
+race_id = 1100
+
+driver_pts = driver_standings[driver_standings['raceId'] == race_id]
+constructor_pts = constructor_standings[constructor_standings['raceId'] == race_id]
+
+print("Top 3 Drivers:")
+print(driver_pts.nsmallest(3, 'position')[['driverId', 'points']])
+print("\nTop 3 Constructors:")
+print(constructor_pts.nsmallest(3, 'position')[['constructorId', 'points']])
+```
+
+## Championship Points Systems
+
+Points systems have evolved throughout F1 history:
+
+- **Current (2010-present):** 25-18-15-12-10-8-6-4-2-1 for top 10
+- **2003-2009:** 10-8-6-5-4-3-2-1 for top 8
+- **1991-2002:** 10-6-4-3-2-1 for top 6
+- **Earlier eras:** Various systems
+
+<Note>
+Since 2019, an additional point is awarded for fastest lap if the driver finishes in the top 10.
+</Note>
+
+## Notes
+
+- Standings are cumulative throughout each season
+- Each race generates a standings snapshot for all competitors
+- Constructor points are the sum of both drivers' points (historically, varied)
+- Ties in points are broken by number of wins, then second places, etc.
+- The `positionText` field may contain "E" for equal/tied positions
+- Championship structure has remained relatively consistent, but points systems have changed
+- These tables allow tracking position changes throughout the season
