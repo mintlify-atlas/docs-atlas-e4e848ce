@@ -416,6 +416,56 @@ Detailed pit stop information including duration and timing.
 
 ---
 
+## constructor_results.csv
+
+Constructor results for each race, showing points scored per constructor per race.
+
+### Schema
+
+<ParamField path="constructorResultsId" type="integer" required>
+  Unique identifier for each constructor result. Primary key.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="raceId" type="integer" required>
+  Foreign key to `races.csv`.
+  
+  **Example**: `18`
+</ParamField>
+
+<ParamField path="constructorId" type="integer" required>
+  Foreign key to `constructors.csv`.
+  
+  **Example**: `1`
+</ParamField>
+
+<ParamField path="points" type="float">
+  Total points scored by the constructor in this race (sum of both drivers' points).
+  
+  **Example**: `14.0`
+</ParamField>
+
+<ParamField path="status" type="string">
+  Status information for the constructor in this race. Often `\N` (null).
+  
+  **Example**: `\N`
+</ParamField>
+
+### Sample Data
+
+| constructorResultsId | raceId | constructorId | points | status |
+|---------------------|--------|---------------|--------|--------|
+| 1 | 18 | 1 | 14 | \N |
+| 2 | 18 | 2 | 8 | \N |
+| 3 | 18 | 3 | 9 | \N |
+
+<Note>
+**Points Calculation**: Constructor points are the sum of points scored by both team drivers in a race. In early F1 seasons, only the best-placed driver's points counted toward constructor championship.
+</Note>
+
+---
+
 ## status.csv
 
 Lookup table for race finishing status codes.
