@@ -1,0 +1,124 @@
+{
+  "projectType": "data-platform",
+  "projectName": "RaceData",
+  "projectDescription": "Comprehensive Formula 1 race dataset from 1950 to present, featuring race results, drivers, constructors, lap times, pit stops, and race events with automated updates.",
+  "theme": "sequoia",
+  "primaryColor": "#0cd610",
+  "lightColor": "#11681e",
+  "darkColor": "#129813",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Data Access",
+            "pages": [
+              "data-access/download",
+              "data-access/huggingface",
+              "data-access/programmatic"
+            ]
+          },
+          {
+            "group": "Data Schema",
+            "pages": [
+              "schema/overview",
+              "schema/races",
+              "schema/drivers-constructors",
+              "schema/performance",
+              "schema/safety-incidents"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/data-analysis",
+              "guides/querying",
+              "guides/visualization",
+              "guides/integrations"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Tables",
+            "pages": [
+              "reference/circuits",
+              "reference/constructors",
+              "reference/drivers",
+              "reference/races",
+              "reference/results",
+              "reference/qualifying",
+              "reference/sprint-results",
+              "reference/lap-times",
+              "reference/pit-stops",
+              "reference/standings",
+              "reference/safety-events",
+              "reference/fatal-accidents"
+            ]
+          },
+          {
+            "group": "Scripts",
+            "pages": [
+              "reference/download-datasets",
+              "reference/upload-hf"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "About",
+        "groups": [
+          {
+            "group": "Project",
+            "pages": [
+              "about/faq",
+              "about/license",
+              "about/contributing",
+              "about/changelog"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Historical F1 data from 1950 to current season",
+    "18 comprehensive CSV tables covering races, drivers, constructors, and performance",
+    "Automated updates within 3 hours of race completion",
+    "600K+ lap times and 22K+ pit stop records",
+    "Safety car, red flag, and fatal accident tracking",
+    "Available via GitHub releases and HuggingFace Datasets",
+    "Public domain license (CC0) for unrestricted use"
+  ],
+  "publicApiSurface": [
+    "circuits.csv - Circuit information with geolocation",
+    "drivers.csv - Driver profiles and metadata",
+    "constructors.csv - Constructor/team information",
+    "races.csv - Race schedules and session times",
+    "results.csv - Race finishing results and points",
+    "qualifying.csv - Qualifying session times (Q1, Q2, Q3)",
+    "sprint_results.csv - Sprint race results",
+    "lap_times.csv - Individual lap times by driver",
+    "pit_stops.csv - Pit stop durations and timings",
+    "driver_standings.csv - Championship standings by race",
+    "constructor_standings.csv - Constructor championship standings",
+    "safety_cars.csv - Safety car deployment data",
+    "red_flags.csv - Red flag incidents",
+    "fatal_accidents_drivers.csv - Driver fatality records",
+    "fatal_accidents_marshalls.csv - Marshall fatality records",
+    "virtual_safety_car_estimates.json - VSC period estimates",
+    "download_datasets.py - Kaggle dataset download script",
+    "upload_to_hf.py - HuggingFace upload utility"
+  ]
+}
